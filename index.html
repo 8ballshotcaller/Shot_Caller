@@ -76,10 +76,10 @@ button{
 }
 
 .brand-name{
-  font-size:22px;
-  font-weight:950;
-  letter-spacing:-.06em;
-  line-height:.9;
+  font-size:24px;
+  font-weight:900;
+  letter-spacing:.015em;
+  line-height:1;
 }
 
 .reset{
@@ -87,9 +87,13 @@ button{
   background:#141a1e;
   color:#e9edef;
   border-radius:9px;
-  padding:8px 13px;
-  font-size:12px;
+  min-width:54px;
+  min-height:30px;
+  padding:5px 12px;
+  font-size:10px;
   font-weight:850;
+  letter-spacing:.04em;
+  text-transform:uppercase;
 }
 
 .layout{
@@ -200,6 +204,20 @@ button{
     0 2px 7px rgba(217,255,63,.12);
 }
 
+.section-action:disabled{
+  opacity:.38;
+  cursor:not-allowed;
+  background:#11171a;
+  border-color:rgba(255,255,255,.10);
+  color:#7d888e;
+  box-shadow:none;
+}
+
+.section-action:disabled:hover{
+  background:#11171a;
+  border-color:rgba(255,255,255,.10);
+}
+
 .where-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -280,17 +298,17 @@ button{
 
 .pro-instruction{
   margin-top:9px;
-  padding:11px 13px;
+  padding:9px 11px;
   border-left:3px solid var(--lime);
   background:#0b1013;
   border-radius:0 9px 9px 0;
   color:#e3e8ea;
-  font-size:12px;
-  line-height:1.35;
+  font-size:11px;
+  line-height:1.25;
   font-weight:800;
   display:flex;
   flex-direction:column;
-  gap:7px;
+  gap:5px;
 }
 
 .call-line{
@@ -301,7 +319,7 @@ button{
 
 .call-step{
   flex:0 0 auto;
-  min-width:44px;
+  min-width:48px;
   font-size:9px;
   letter-spacing:.09em;
   text-transform:uppercase;
@@ -643,7 +661,7 @@ button{
     <div class="ball-panel">
       <div class="ball-head">
         <div class="ball-label" id="cueViewLabel">
-          Cue Ball · Where To Hit
+          Cue Ball
         </div>
       </div>
 
@@ -782,6 +800,10 @@ button{
     <div class="section-accent" id="rackAccent">
       Select
     </div>
+
+    <button class="section-action" id="deleteBall" disabled>
+      Remove
+    </button>
   </div>
 
   <div class="rack" id="rack"></div>
@@ -833,7 +855,8 @@ button{
     </div>
 
     <div class="ownership-help">
-      A player's ball can be used to hit a combo. Opponent's balls are blockers only.
+      <div>A player's ball can be used to hit a combo.</div>
+      <div>Opponent's balls are blockers only.</div>
     </div>
 
   </div>
@@ -2653,6 +2676,27 @@ function kickCandidatesForPocket(
 
 function solve(){
 
+  /*
+    Deleting the last target is a valid editing state. Keep the
+    solver untouched until a real target exists instead of
+    attempting geometry with a missing object ball.
+  */
+  if(
+    !state.object||
+    !state.object.number||
+    !state.tableBalls.some(
+      ball=>
+        ball.owner==="target"&&
+        ball.number===
+        state.object.number
+    )
+  ){
+    state.solution=null;
+    state.contactBall=null;
+    render();
+    return;
+  }
+
   const pockets=
     state.selectedPocket
       ?[state.selectedPocket]
@@ -3283,7 +3327,7 @@ function pocketShortName(
 /*
   Short, glanceable language. In a real game there is no time
   to read a paragraph, so the call is delivered as three short
-  lines: cue ball, contact, result.
+  lines: cue ball, contact, pocket.
 */
 
 function shortSpinText(vector){
@@ -3443,7 +3487,7 @@ function instructionHTML(s){
         `<span class="neutral-emphasis">${objectFace}</span>`
       ),
       callLine(
-        "Result",
+        "Pocket",
         `${ballMarkup} into the ${second} on its `+
         `<span class="neutral-emphasis">${shortFaceText(call.targetVector)}</span>`+
         ` &rarr; ${pocketMarkup}`
@@ -3468,7 +3512,7 @@ function instructionHTML(s){
         `<span class="neutral-emphasis">${objectFace}</span>`
       ),
       callLine(
-        "Result",
+        "Pocket",
         `${ballMarkup} &rarr; ${pocketMarkup}`
       )
     );
@@ -3490,7 +3534,7 @@ function instructionHTML(s){
         `<span class="neutral-emphasis">${objectFace}</span>`
       ),
       callLine(
-        "Result",
+        "Pocket",
         `${ballMarkup} off the `+
         `<span class="highlight">${railText(s.rail)}</span>`+
         ` &rarr; ${pocketMarkup}`
@@ -3512,7 +3556,7 @@ function instructionHTML(s){
           `<span class="neutral-emphasis">${objectFace}</span>`
     ),
     callLine(
-      "Result",
+      "Pocket",
       `${ballMarkup} &rarr; ${pocketMarkup}`
     )
   );
@@ -4952,7 +4996,8 @@ function drawContactMarker(
   c,
   ball,
   direction,
-  distanceFactor=.78
+  distanceFactor=.78,
+  showGuide=false
 ){
 
   if(
@@ -4986,6 +5031,40 @@ function drawContactMarker(
     ball.y+
     direction.y*
     markerDistance;
+
+  if(showGuide){
+
+    c.beginPath();
+
+    c.moveTo(
+      ball.x,
+      ball.y
+    );
+
+    c.lineTo(
+      x,
+      y
+    );
+
+    c.strokeStyle=
+      "rgba(255,70,82,.58)";
+
+    c.lineWidth=
+      Math.max(
+        1.2,
+        ball.r*.035
+      );
+
+    c.setLineDash(
+      [
+        Math.max(2,ball.r*.08),
+        Math.max(3,ball.r*.12)
+      ]
+    );
+
+    c.stroke();
+    c.setLineDash([]);
+  }
 
   c.beginPath();
 
@@ -5211,7 +5290,8 @@ function drawObjectView(c){
           1
         )
       )
-      :.78
+      :.78,
+    true
   );
 }
 
@@ -5252,7 +5332,9 @@ function drawTargetView(c){
   drawContactMarker(
     c,
     ball,
-    direction
+    direction,
+    .78,
+    true
   );
 }
 
@@ -5323,7 +5405,10 @@ function render(){
   document.getElementById(
     "whereBall"
   ).textContent=
-    state.object.number;
+    state.object&&
+    state.object.number
+      ?state.object.number
+      :"—";
 
   document.getElementById(
     "shotType"
@@ -5384,15 +5469,15 @@ function render(){
   ).textContent=
     s&&
     s.kind==="combination"
-      ?`${s.combinationBall.number} · Where The Cue Ball Contacts`
-      :`${state.object.number} · Where The Cue Ball Contacts`;
+      ?"Combination Ball"
+      :"Object Ball";
 
   document.getElementById(
     "targetViewLabel"
   ).textContent=
     s&&
     s.kind==="combination"
-      ?`${s.targetBall.number} · Where The ${s.combinationBall.number} Contacts`
+      ?"Target Ball"
       :"Target Ball";
 
   renderPockets();
@@ -5712,6 +5797,14 @@ function renderRack(){
     state.selectedRackBall
       ?`Ball ${state.selectedRackBall} Selected`
       :"Select";
+
+  const deleteButton=
+    document.getElementById(
+      "deleteBall"
+    );
+
+  deleteButton.disabled=
+    !getSelectedTableBall();
 }
 
 /* ============================================================
@@ -5962,6 +6055,85 @@ function setBallOwner(owner){
 
   solve();
 }
+
+function deleteSelectedBall(){
+
+  const selected=
+    getSelectedTableBall();
+
+  if(!selected){
+    return;
+  }
+
+  const wasTarget=
+    selected.owner==="target"||
+    state.object&&
+    state.object.number===
+    selected.number;
+
+  state.tableBalls=
+    state.tableBalls.filter(
+      ball=>
+        ball.number!==
+        selected.number
+    );
+
+  if(wasTarget){
+
+    const replacement=
+      state.tableBalls.find(
+        ball=>
+          ball.owner==="target"
+      )||
+      state.tableBalls[0]||
+      null;
+
+    if(replacement){
+
+      state.tableBalls.forEach(
+        ball=>{
+          if(ball.number===replacement.number){
+            ball.owner="target";
+            ball.role="object";
+          }else if(ball.owner==="target"){
+            ball.owner="my";
+            ball.role="blocker";
+          }
+        }
+      );
+
+      state.object={
+        x:replacement.x,
+        y:replacement.y,
+        number:replacement.number
+      };
+
+      state.selectedRackBall=
+        replacement.number;
+
+    }else{
+
+      state.object={
+        x:65,
+        y:20,
+        number:null
+      };
+
+      state.selectedRackBall=null;
+    }
+
+  }else{
+    state.selectedRackBall=null;
+  }
+
+  state.selectedBall=null;
+  state.contactBall=null;
+  solve();
+}
+
+document.getElementById(
+  "deleteBall"
+).onclick=deleteSelectedBall;
 
 document.querySelectorAll(
   ".ownership-button"
