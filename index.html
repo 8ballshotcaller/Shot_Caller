@@ -398,6 +398,12 @@ button{
   border-color:var(--lime);
 }
 
+.mode.suggested:not(.active){
+  color:var(--lime);
+  border-color:rgba(217,255,63,.46);
+  background:rgba(217,255,63,.06);
+}
+
 .rack{
   position:relative;
   margin:11px auto 3px;
@@ -626,15 +632,15 @@ button{
     font-weight: 800;
     text-transform: uppercase;
   }
-  .brand-name::first-letter { color: var(--lime); }
+  .brand-name::first-letter { color: inherit; }
   .reset, #deleteBall {
     min-width: 74px;
     min-height: 34px;
     padding: 7px 14px;
     font-size: 10px;
+    font-weight: 950;
     letter-spacing: .08em;
   }
-  .pro-instruction .call-line:nth-child(3) { display: none; }
   .ownership-help { display: grid; gap: 4px; }
   .ownership-section.eight-ball-auto .ownership-label,
   .ownership-section.eight-ball-auto .ownership-buttons {
@@ -648,7 +654,90 @@ button{
     .reset, #deleteBall { min-width: 74px; min-height: 34px; }
   }
 </style>
-</head>
+<style>
+      /* Focused product identity: a cue-ball mark and a two-beat wordmark. */
+      .brand { gap: 10px; }
+      .brand-mark {
+        width: 30px;
+        height: 30px;
+        position: relative;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(217,255,63,.72);
+        border-radius: 50%;
+        background: radial-gradient(circle at 32% 27%, #f9fbfb 0 11%, #d2d8da 18%, #536269 64%, #151b1e 100%);
+        box-shadow: inset -3px -4px 5px rgba(0,0,0,.34), 0 0 0 3px rgba(217,255,63,.08);
+        transform: rotate(-9deg);
+      }
+      .brand-mark::after {
+        content: "";
+        position: absolute;
+        inset: -5px;
+        border: 1px solid rgba(217,255,63,.20);
+        border-left-color: transparent;
+        border-bottom-color: transparent;
+        border-radius: 50%;
+        transform: rotate(28deg);
+      }
+      .mark-eight {
+        width: 17px;
+        height: 17px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: #101518;
+        color: #eef4f1;
+        font-size: 10px;
+        line-height: 1;
+        font-weight: 950;
+        transform: rotate(9deg);
+      }
+      .mark-ring { display: none; }
+      .brand-name {
+        display: flex;
+        align-items: baseline;
+         gap: 5px;
+         font-family: inherit;
+        font-size: 24px;
+         font-weight: 850;
+         letter-spacing: .015em;
+        text-transform: none;
+      }
+       .brand-name span:last-child {
+         color: inherit;
+         font-style: normal;
+       }
+       .inline-eight {
+         width: .78em;
+         height: .78em;
+         margin: 0 .06em;
+         display: inline-grid;
+         place-items: center;
+         vertical-align: .02em;
+         border: 1px solid rgba(217,255,63,.75);
+         border-radius: 50%;
+         background: radial-gradient(circle at 32% 25%, #fafcfc 0 10%, #ccd3d5 22%, #47565c 72%, #121719 100%);
+         color: #f5f7f8;
+         font-family: inherit;
+         font-size: .54em;
+         font-weight: 900;
+         line-height: 1;
+         text-align: center;
+         box-shadow: inset -1px -2px 2px rgba(0,0,0,.35);
+      }
+      .pro-instruction {
+        border-left-width: 4px;
+        padding: 10px 12px 10px 13px;
+        background: linear-gradient(90deg, rgba(217,255,63,.075), #0b1013 42%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+      }
+      .call-step { color: var(--lime); }
+      @media (max-width: 520px) {
+        .brand-mark { width: 27px; height: 27px; }
+      .brand-name { font-size: 20px; gap: 4px; }
+      }
+    </style>
+  </head>
 
 <body>
 
@@ -656,7 +745,8 @@ button{
 
 <header class="header">
   <div class="brand">
-    <div class="brand-name">Shot Caller</div>
+    <div class="brand-mark" aria-hidden="true"><span class="mark-eight">8</span><span class="mark-ring"></span></div>
+      <div class="brand-name"><span>Sh<span class="inline-eight">8</span>t</span><span>Caller</span></div>
   </div>
 
   <button class="reset" id="reset">
@@ -772,28 +862,9 @@ button{
 
   <div class="section-head">
     <div class="section-title">
-      Pocket
-    </div>
-
-    <button class="section-action active" id="pocketAuto">
-      Suggested
-    </button>
-  </div>
-
-  <div class="pockets" id="pockets"></div>
-
-</section>
-
-<section class="card full-card section">
-
-  <div class="section-head">
-    <div class="section-title">
       Shot Type
     </div>
 
-    <button class="section-action active" id="shotAuto">
-      Suggested
-    </button>
   </div>
 
   <div class="modes">
@@ -808,6 +879,10 @@ button{
 
     <button class="mode" data-mode="combo">
       Combo
+    </button>
+
+    <button class="mode suggested" data-mode="auto">
+      Suggested
     </button>
 
     <button class="mode" data-mode="bank">
@@ -846,10 +921,6 @@ button{
 
       <div class="section-title">
         Ball Role
-      </div>
-
-      <div class="section-accent" id="ownershipAccent">
-        Select a ball
       </div>
 
     </div>
@@ -1040,9 +1111,11 @@ const state={
 const canvas=document.getElementById("table");
 const ctx=canvas.getContext("2d");
 
+const MAX_DPR=3;
+
 let DPR=Math.min(
   window.devicePixelRatio||1,
-  2
+  MAX_DPR
 );
 
 /* ============================================================
@@ -1304,19 +1377,18 @@ function pocketTargets(pocket){
     pocket.type==="side"
   ){
 
-    [-1.15,-.65,0,.65,1.15]
+    /*
+      Use the actual pocket opening as the aim reference. These
+      small samples model the usable mouth without moving the
+      target onto an arbitrary point on the cloth.
+    */
+    [-1.20,-.60,0,.60,1.20]
       .forEach(offset=>{
 
         targets.push(
           V(
-            clamp(
-              pocket.x+offset,
-              BALL_RADIUS,
-              TABLE_W-BALL_RADIUS
-            ),
-            pocket.y===0
-              ?RAIL.top
-              :RAIL.bottom
+            pocket.x+offset,
+            pocket.y
           )
         );
 
@@ -1335,20 +1407,15 @@ function pocketTargets(pocket){
         :-1;
 
     [
-      [.35,.35],
-      [.60,.60],
-      [.85,.85]
-    ].forEach(([x,y])=>{
+      0,
+      .70,
+      1.40
+    ].forEach(inset=>{
 
       targets.push(
         V(
-          pocket.x+
-            sx*x*
-            POCKET_SIZE*.48,
-
-          pocket.y+
-            sy*y*
-            POCKET_SIZE*.48
+          pocket.x+sx*inset,
+          pocket.y+sy*inset
         )
       );
 
@@ -1602,6 +1669,15 @@ function directCandidate(
       target
     );
 
+  const objectContactPoint=
+    sub(
+      object,
+      mul(
+        objectDirection,
+        BALL_RADIUS
+      )
+    );
+
   const isStraight=
     cutDegrees<=12;
 
@@ -1640,6 +1716,7 @@ function directCandidate(
     rail:null,
 
     ghost,
+    objectContactPoint,
 
     bankPoint:null,
 
@@ -1787,6 +1864,28 @@ function combinationCandidate(
 
   const firstToSecond=
     norm(firstToSecondVector);
+
+  /*
+    Keep physical surface contacts separate from the center-to-
+    center ghost positions drawn on the table.
+  */
+  const firstBallContactPoint=
+    sub(
+      firstBall,
+      mul(
+        firstToSecond,
+        BALL_RADIUS
+      )
+    );
+
+  const targetBallContactPoint=
+    sub(
+      secondBall,
+      mul(
+        secondToPocket,
+        BALL_RADIUS
+      )
+    );
 
   /*
     Cue-ball ghost position for contacting the player's ball.
@@ -1968,9 +2067,11 @@ function combinationCandidate(
     targetBall:secondBall,
 
     firstContactPoint:cueGhost,
+    firstBallContactPoint,
 
     secondContactPoint:
       secondBallContactPoint,
+    targetBallContactPoint,
 
     contactBall:firstBall,
 
@@ -2279,6 +2380,15 @@ function bankCandidate(
       )
     );
 
+  const objectContactPoint=
+    sub(
+      object,
+      mul(
+        objectDirection,
+        BALL_RADIUS
+      )
+    );
+
   const incoming=
     norm(
       sub(
@@ -2349,6 +2459,7 @@ function bankCandidate(
     rail,
 
     ghost,
+    objectContactPoint,
     bankPoint,
 
     cueDirection,
@@ -2492,6 +2603,15 @@ function kickCandidate(
       pocket
     );
 
+  const objectContactPoint=
+    sub(
+      object,
+      mul(
+        objectDirection,
+        BALL_RADIUS
+      )
+    );
+
   return{
     kind:"kick",
 
@@ -2500,6 +2620,7 @@ function kickCandidate(
     rail,
 
     ghost,
+    objectContactPoint,
 
     bankPoint:kickPoint,
 
@@ -2721,6 +2842,25 @@ function solve(){
         ball.owner==="target"&&
         ball.number===
         state.object.number
+    )
+  ){
+    state.solution=null;
+    state.contactBall=null;
+    render();
+    return;
+  }
+
+  /*
+    In standard 8-ball, the 8 is not a legal target while any
+    player's own balls remain on the table. Stop all shot types
+    here so auto mode cannot suggest an automatic-loss shot.
+  */
+  if(
+    state.object.number===8&&
+    state.tableBalls.some(
+      ball=>
+        ball.number!==8&&
+        ball.owner==="my"
     )
   ){
     state.solution=null;
@@ -3166,6 +3306,7 @@ function objectContactDirection(s){
 
     return contactDirection(
       s.combinationBall,
+      s.firstBallContactPoint||
       s.firstContactPoint
     );
   }
@@ -3178,6 +3319,7 @@ function objectContactDirection(s){
 
   return contactDirection(
     state.object,
+    s.objectContactPoint||
     s.ghost
   );
 }
@@ -3193,6 +3335,7 @@ function targetContactDirection(s){
 
   return contactDirection(
     s.targetBall,
+    s.targetBallContactPoint||
     s.secondContactPoint
   );
 }
@@ -3456,146 +3599,64 @@ function callLine(step,text){
 }
 
 function instructionHTML(s){
-
   if(!s){
-
     if(
-      state.mode==="combo"
+      state.object&&
+      state.object.number===8&&
+      state.tableBalls.some(
+        ball=>
+          ball.number!==8&&
+          ball.owner==="my"
+      )
     ){
-
-      return callLine(
-        "Setup",
-        "Place a player's ball and a target ball."
-      );
+      return callLine("8-Ball","Clear your player's balls before shooting the 8-ball.");
     }
 
     return callLine(
       "Setup",
-      "Place the cue ball and target ball."
+      state.mode==="combo"
+        ?"Choose a player's ball and a target ball on the table."
+        :"Place the cue ball and target ball on the felt."
     );
   }
 
-  const call=
-    shotCall(s);
+  const call=shotCall(s);
+  const pocketMarkup=`<span class="highlight">${pocketShortName(s.pocket)}</span>`;
+  const spinMarkup=`<span class="highlight">${shortSpinText(call.tipVector)}</span>`;
+  const objectFace=shortFaceText(call.objectVector);
+  const objectNumber=s.kind==="combination"
+    ?s.combinationBall.number
+    :state.object.number;
+  const ballMarkup=`<span class="neutral-emphasis">${objectNumber}</span>`;
 
-  const pocketMarkup=
-    `<span class="highlight">${pocketShortName(s.pocket)}</span>`;
-
-  const spinMarkup=
-    `<span class="highlight">${shortSpinText(call.tipVector)}</span>`;
-
-  const objectFace=
-    shortFaceText(call.objectVector);
-
-  const objectNumber=
-    s.kind==="combination"
-      ?s.combinationBall.number
-      :state.object.number;
-
-  const ballMarkup=
-    `<span class="neutral-emphasis">${objectNumber}</span>`;
-
-  const lines=[
-    callLine(
-      "Cue",
-      spinMarkup
-    )
-  ];
-
-  /*
-    COMBO
-  */
-  if(
-    s.kind==="combination"
-  ){
-
-    const second=
-      `<span class="neutral-emphasis">${s.targetBall.number}</span>`;
-
-    lines.push(
-      callLine(
-        "Hit",
-        `the ${ballMarkup} on its `+
-        `<span class="neutral-emphasis">${objectFace}</span>`
-      ),
-      callLine(
-        "Pocket",
-        `${ballMarkup} into the ${second} on its `+
-        `<span class="neutral-emphasis">${shortFaceText(call.targetVector)}</span>`+
-        ` &rarr; ${pocketMarkup}`
-      )
+  if(s.kind==="combination"){
+    return callLine(
+      "Call",
+      `${spinMarkup}. Send the ${ballMarkup} into ${s.targetBall.number}, then finish at ${pocketMarkup}.`
     );
-
-    return lines.join("");
   }
 
-  /*
-    KICK
-  */
-  if(
-    s.kind==="kick"
-  ){
-
-    lines.push(
-      callLine(
-        "Hit",
-        `the <span class="highlight">${railText(s.rail)}</span> first, `+
-        `then the ${ballMarkup} on its `+
-        `<span class="neutral-emphasis">${objectFace}</span>`
-      ),
-      callLine(
-        "Pocket",
-        `${ballMarkup} &rarr; ${pocketMarkup}`
-      )
+  if(s.kind==="kick"){
+    return callLine(
+      "Call",
+      `${spinMarkup}. Take the ${railText(s.rail)} first, then contact the ${ballMarkup}.`
     );
-
-    return lines.join("");
   }
 
-  /*
-    BANK
-  */
-  if(
-    s.kind==="bank"
-  ){
-
-    lines.push(
-      callLine(
-        "Hit",
-        `the ${ballMarkup} on its `+
-        `<span class="neutral-emphasis">${objectFace}</span>`
-      ),
-      callLine(
-        "Pocket",
-        `${ballMarkup} off the `+
-        `<span class="highlight">${railText(s.rail)}</span>`+
-        ` &rarr; ${pocketMarkup}`
-      )
+  if(s.kind==="bank"){
+    return callLine(
+      "Call",
+      `${spinMarkup}. Hit the ${ballMarkup} ${objectFace}, using the ${railText(s.rail)}.`
     );
-
-    return lines.join("");
   }
 
-  /*
-    STRAIGHT AND CUT
-  */
-  lines.push(
-    callLine(
-      "Hit",
-      s.kind==="straight"
-        ?`the ${ballMarkup} <span class="neutral-emphasis">dead center</span> (straight in)`
-        :`the ${ballMarkup} on its `+
-          `<span class="neutral-emphasis">${objectFace}</span>`
-    ),
-    callLine(
-      "Pocket",
-      `${ballMarkup} &rarr; ${pocketMarkup}`
-    )
+  return callLine(
+    "Call",
+    s.kind==="straight"
+      ?`${spinMarkup}. Center the ${ballMarkup} and send it to ${pocketMarkup}.`
+      :`${spinMarkup}. Contact the ${ballMarkup} ${objectFace}; the visual route ends at ${pocketMarkup}.`
   );
-
-  return lines.join("");
 }
-
 
 /* ============================================================
    RAIL TEXT
@@ -3618,18 +3679,23 @@ function railText(rail){
    ============================================================ */
 
 function geometry(){
-
   const w=canvas.width;
   const h=canvas.height;
-
-  const inset=
-    Math.min(w,h)*.085;
-
+  const inset=Math.min(w,h)*.085;
+  const baseW=w-inset*2;
+  const baseH=h-inset*2;
+  /*
+    The table is presented through a small, deliberate viewport zoom.
+    All drawing and pointer conversion use this same expanded geometry,
+    so the felt, pockets, balls and shot routes remain one coordinate system.
+  */
+  const zoom=w<620?1.06:1.10;
   return{
-    x:inset,
-    y:inset,
-    w:w-inset*2,
-    h:h-inset*2
+    x:(w-baseW*zoom)/2,
+    y:(h-baseH*zoom)/2,
+    w:baseW*zoom,
+    h:baseH*zoom,
+    zoom
   };
 }
 
@@ -3816,6 +3882,7 @@ function drawTable(){
     g.h
   );
 
+  drawRails(g);
   ctx.strokeStyle=
     "rgba(7,6,4,.95)";
 
@@ -3834,6 +3901,30 @@ function drawTable(){
 
   drawDiamonds(g);
   drawPockets(g);
+}
+
+/*
+  The original cloth rectangle already established the physical
+  table viewport. These four visible cushion faces are purely a
+  presentation layer around that same viewport; the solver still
+  uses the unchanged RAIL constants above.
+*/
+function drawRails(g){
+  const depth=Math.max(5,Math.min(canvas.width,canvas.height)*.035);
+  const railGradient=ctx.createLinearGradient(0,0,0,canvas.height);
+  railGradient.addColorStop(0,"#6d4a28");
+  railGradient.addColorStop(.5,"#321e11");
+  railGradient.addColorStop(1,"#4f3018");
+  ctx.fillStyle=railGradient;
+
+  ctx.fillRect(g.x-depth,g.y-depth,g.w+depth*2,depth);
+  ctx.fillRect(g.x-depth,g.y+g.h,g.w+depth*2,depth);
+  ctx.fillRect(g.x-depth,g.y,depth,g.h);
+  ctx.fillRect(g.x+g.w,g.y,depth,g.h);
+
+  ctx.strokeStyle="rgba(245,204,142,.18)";
+  ctx.lineWidth=Math.max(1,depth*.12);
+  ctx.strokeRect(g.x-depth*.35,g.y-depth*.30,g.w+depth*.70,g.h+depth*.60);
 }
 
 /* ============================================================
@@ -5028,7 +5119,7 @@ function drawContactMarker(
   c,
   ball,
   direction,
-  distanceFactor=.78,
+  distanceFactor=.92,
   showGuide=false
 ){
 
@@ -5219,6 +5310,34 @@ function drawCueCrosshair(
   c.restore();
 }
 
+function renderedAimDirection(s){
+  if(!s){
+    return V(0,0);
+  }
+
+  const contact=s.kind==="combination"
+    ?s.firstContactPoint
+    :s.ghost;
+
+  if(!contact){
+    return V(0,0);
+  }
+
+  /*
+    Derive the aiming vector from the two points after the table's
+    responsive transform has been applied. This avoids CSS-pixel
+    offsets and keeps the cue dot aligned at every table size.
+  */
+  const cueScreen=toScreen(state.cue);
+  const contactScreen=toScreen(contact);
+  const renderedVector=V(
+    contactScreen.x-cueScreen.x,
+    contactScreen.y-cueScreen.y
+  );
+
+  return norm(renderedVector);
+}
+
 function drawCueView(c){
 
   const ball=
@@ -5312,18 +5431,8 @@ function drawObjectView(c){
     c,
     ball,
     direction,
-    s.kind==="cut"
-      ?(
-        .42+
-        .54*
-        clamp(
-          (s.cutDegrees-12)/66,
-          0,
-          1
-        )
-      )
-      :.78,
-    true
+    .92,
+    false
   );
 }
 
@@ -5365,7 +5474,7 @@ function drawTargetView(c){
     c,
     ball,
     direction,
-    .78,
+    .92,
     true
   );
 }
@@ -5560,89 +5669,17 @@ function titleCaseRail(rail){
     .join(" ");
 }
 
-/* ============================================================
-   POCKET UI
-   ============================================================ */
-
-document.getElementById(
-  "pocketAuto"
-).onclick=()=>{
-
-  state.selectedPocket=null;
-
-  solve();
-};
-
 function renderPockets(){
-
-  const container=
-    document.getElementById(
-      "pockets"
-    );
-
-  container.innerHTML="";
-
-  for(
-    const pocket of POCKETS
-  ){
-
-    const button=
-      document.createElement(
-        "button"
-      );
-
-    button.className=
-      "pocket";
-
-    const active=
-      state.selectedPocket&&
-      state.selectedPocket.id===
-      pocket.id;
-
-    if(active){
-      button.classList.add(
-        "selected"
-      );
-    }
-
-    button.textContent=
-      titleCasePocket(
-        pocket.name
-      );
-
-    button.onclick=()=>{
-
-      state.selectedPocket=
-        pocket;
-
-      solve();
-    };
-
-    container.appendChild(
-      button
-    );
-  }
-
-  document.getElementById(
-    "pocketAuto"
-  ).classList.toggle(
-    "active",
-    !state.selectedPocket
-  );
+  /*
+    Pocket choice is intentionally canvas-only. The six real
+    pocket mouths are rendered and hit-tested in table space.
+    With no selected mouth the solver remains in suggested mode.
+  */
 }
 
 /* ============================================================
    MODE UI
    ============================================================ */
-
-document.getElementById(
-  "shotAuto"
-).onclick=()=>{
-
-  state.mode="auto";
-
-  solve();
-};
 
 function renderModes(){
 
@@ -5651,11 +5688,9 @@ function renderModes(){
   ).forEach(
     button=>{
 
-      button.classList.toggle(
-        "active",
-        state.mode===
-        button.dataset.mode
-      );
+      const active=state.mode===button.dataset.mode;
+      button.classList.toggle("active",active);
+      button.setAttribute("aria-pressed",String(active));
 
       button.onclick=()=>{
 
@@ -5668,12 +5703,6 @@ function renderModes(){
     }
   );
 
-  document.getElementById(
-    "shotAuto"
-  ).classList.toggle(
-    "active",
-    state.mode==="auto"
-  );
 }
 
 /* ============================================================
@@ -6219,28 +6248,10 @@ function renderOwnership(){
     }
   );
 
-  const accent=
-    document.getElementById(
-      "ownershipAccent"
-    );
-
   if(!selected){
-
-    accent.textContent=
-      "Select a ball";
-
     return;
   }
 
-  const labels={
-    target:"Target Ball",
-    my:"Player's Ball",
-    opponent:"Opponent's Ball"
-  };
-
-  accent.textContent=
-    labels[selected.owner]||
-    "Select a ball";
 }
 
 /* ============================================================
@@ -6302,6 +6313,22 @@ function nearestBall(p){
   }
 
   return null;
+}
+
+function nearestPocket(p){
+  const hitRadius=Math.max(POCKET_SIZE*1.45,5.2);
+  let nearest=null;
+  let nearestDistance=Infinity;
+
+  for(const pocket of POCKETS){
+    const d=dist(p,pocket);
+    if(d<=hitRadius&&d<nearestDistance){
+      nearest=pocket;
+      nearestDistance=d;
+    }
+  }
+
+  return nearest;
 }
 
 /* ============================================================
@@ -6469,6 +6496,25 @@ function moveSelectedBall(p){
             :"object"
     };
 
+    /*
+      The 8-ball is always treated as the final target. Keep the
+      target role unique when it is added or moved into play.
+    */
+    if(
+      newBall.owner==="target"
+    ){
+      state.tableBalls.forEach(
+        ball=>{
+          if(
+            ball.owner==="target"
+          ){
+            ball.owner="my";
+            ball.role="blocker";
+          }
+        }
+      );
+    }
+
     state.tableBalls.push(
       newBall
     );
@@ -6574,6 +6620,22 @@ canvas.addEventListener(
 
       render();
 
+      return;
+    }
+
+    const pocket=nearestPocket(p);
+    if(pocket){
+      /*
+        Tapping the active mouth returns the solver to its
+        suggested-pocket search, so there is no second HTML
+        pocket control to hunt for on small screens.
+      */
+      state.selectedPocket=
+        state.selectedPocket&&
+        state.selectedPocket.id===pocket.id
+          ?null
+          :pocket;
+      solve();
       return;
     }
 
@@ -6724,7 +6786,7 @@ window.addEventListener(
 
           DPR=Math.min(
             window.devicePixelRatio||1,
-            2
+            MAX_DPR
           );
 
           resizeCanvas();
