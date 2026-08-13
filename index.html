@@ -314,12 +314,12 @@ button{
 }
 
 .pro-instruction .highlight{
-  color:var(--lime);
+  color:#f5f7f8;
   font-weight:950;
 }
 
 .pro-instruction .neutral-emphasis{
-  color:#ffffff;
+  color:#f5f7f8;
   font-weight:900;
 }
 
@@ -643,7 +643,7 @@ button{
     <div class="ball-panel">
       <div class="ball-head">
         <div class="ball-label" id="cueViewLabel">
-          Cue Ball · Where To Place The Tip
+          Cue ball · Tip placement
         </div>
       </div>
 
@@ -653,7 +653,7 @@ button{
     <div class="ball-panel">
       <div class="ball-head">
         <div class="ball-label" id="objectViewLabel">
-          Object Ball
+          Object ball · Contact point
         </div>
       </div>
 
@@ -663,7 +663,7 @@ button{
     <div class="ball-panel combo-only">
       <div class="ball-head">
         <div class="ball-label" id="targetViewLabel">
-          Target Ball
+          Target ball · Contact point
         </div>
       </div>
 
@@ -713,7 +713,7 @@ button{
   </div>
 
   <div class="pro-instruction" id="instruction">
-    Place the cue ball and target ball.
+    Place the cue ball + target ball.
   </div>
 
 </section>
@@ -833,7 +833,7 @@ button{
     </div>
 
     <div class="ownership-help">
-      Player's balls can be used to hit a combo. Opponent's balls are blockers only and will not be used in combos.
+      Player's balls can be used in combos. Opponent's balls only block the shot.
     </div>
 
   </div>
@@ -1021,6 +1021,10 @@ function mul(a,n){
 
 function dot(a,b){
   return a.x*b.x+a.y*b.y;
+}
+
+function cross2(a,b){
+  return a.x*b.y-a.y*b.x;
 }
 
 function len(a){
@@ -1453,103 +1457,6 @@ function contactDirection(
   );
 }
 
-function cross(a,b){
-  return a.x*b.y-a.y*b.x;
-}
-
-function angleBetween(a,b){
-  if(
-    len(a)<.01||
-    len(b)<.01
-  ){
-    return 0;
-  }
-
-  return Math.acos(
-    clamp(
-      dot(
-        norm(a),
-        norm(b)
-      ),
-      -1,
-      1
-    )
-  )*
-  180/
-  Math.PI;
-}
-
-/*
-  The enlarged object-ball view is an aiming view, not a
-  literal drawing of the two ball surfaces touching.
-
-  A straight shot therefore lands at the center of the view.
-  As the cut gets thinner, the aim point moves toward the edge
-  by sin(cut angle). This is the same relationship used by the
-  ghost-ball geometry, so the dot and the shot call agree.
-*/
-function aimOffsetDirection(
-  center,
-  contactPoint,
-  cutDegrees
-){
-  const direction=
-    contactDirection(
-      center,
-      contactPoint
-    );
-
-  if(
-    len(direction)<.01||
-    !Number.isFinite(cutDegrees)||
-    cutDegrees<1
-  ){
-    return V(0,0);
-  }
-
-  return mul(
-    direction,
-    clamp(
-      Math.sin(
-        cutDegrees*
-        Math.PI/
-        180
-      ),
-      0,
-      .98
-    )
-  );
-}
-
-/*
-  Running English is determined by the direction in which the
-  shot turns at the rail. This avoids the old hard-coded answer
-  that could call the opposite side on a mirror-image bank.
-*/
-function runningEnglishVector(
-  incoming,
-  outgoing
-){
-  const turn=
-    cross(
-      incoming,
-      outgoing
-    );
-
-  if(
-    Math.abs(turn)<.035
-  ){
-    return V(0,0);
-  }
-
-  return V(
-    turn>0
-      ?1
-      :-1,
-    0
-  );
-}
-
 /* ============================================================
    DIRECT SHOT
    ============================================================ */
@@ -1694,14 +1601,6 @@ function directCandidate(
       ),
 
     objectDirection,
-
-     impactDirection:
-       norm(
-         sub(
-           object,
-           ghost
-         )
-       ),
 
     cueDistance,
     objectDistance,
@@ -1911,27 +1810,18 @@ function combinationCandidate(
     );
 
   const transferAngle=
-    angleBetween(
-      firstIncoming,
-      firstOutgoing
-    );
-
-  const targetIncoming=
-    norm(
-      sub(
-        secondBallContactPoint,
-        firstBall
+    Math.acos(
+      clamp(
+        dot(
+          firstIncoming,
+          firstOutgoing
+        ),
+        -1,
+        1
       )
-    );
-
-  const targetOutgoing=
-    secondToPocket;
-
-  const targetCutDegrees=
-    angleBetween(
-      targetIncoming,
-      targetOutgoing
-    );
+    )*
+    180/
+    Math.PI;
 
   /*
     Reject physically extreme combinations.
@@ -2020,8 +1910,6 @@ function combinationCandidate(
 
     objectDirection:firstOutgoing,
 
-    impactDirection:firstIncoming,
-
     cueDistance,
 
     objectDistance:
@@ -2035,7 +1923,6 @@ function combinationCandidate(
       secondDistance,
 
     transferAngle,
-    targetCutDegrees,
 
     cutDegrees:0,
 
@@ -2325,10 +2212,18 @@ function bankCandidate(
     );
 
   const cutDegrees=
-    angleBetween(
-      cueDirection,
-      incoming
-    );
+    Math.acos(
+      clamp(
+        dot(
+          cueDirection,
+          incoming
+        ),
+        -1,
+        1
+      )
+    )*
+    180/
+    Math.PI;
 
   if(
     !Number.isFinite(cutDegrees)||
@@ -2355,26 +2250,6 @@ function bankCandidate(
       target
     );
 
-  const postBankDirection=
-    norm(
-      sub(
-        target,
-        bankPoint
-      )
-    );
-
-  const bankApproachPenalty=
-    pocketApproachPenalty(
-      pocket,
-      postBankDirection
-    );
-
-  if(
-    bankApproachPenalty===null
-  ){
-    return null;
-  }
-
   return{
     kind:"bank",
 
@@ -2387,8 +2262,6 @@ function bankCandidate(
 
     cueDirection,
     objectDirection,
-
-     impactDirection:incoming,
 
     cueDistance,
 
@@ -2403,18 +2276,11 @@ function bankCandidate(
 
     cutDegrees,
 
-     approachDegrees:
-       pocketApproachDegrees(
-         pocket,
-         postBankDirection
-       ),
-
     score:
       cueDistance+
       firstLeg+
       secondLeg+
       25+
-       bankApproachPenalty+
       Math.max(
         0,
         cutDegrees-40
@@ -2524,40 +2390,6 @@ function kickCandidate(
       pocket
     );
 
-  const impactDirection=
-    norm(
-      sub(
-        ghost,
-        kickPoint
-      )
-    );
-
-  const objectIncoming=
-    norm(
-      sub(
-        object,
-        ghost
-      )
-    );
-
-  const cutDegrees=
-    angleBetween(
-      impactDirection,
-      objectIncoming
-    );
-
-  const approachPenalty=
-    pocketApproachPenalty(
-      pocket,
-      objectDirection
-    );
-
-  if(
-    approachPenalty===null
-  ){
-    return null;
-  }
-
   return{
     kind:"kick",
 
@@ -2579,8 +2411,6 @@ function kickCandidate(
 
     objectDirection,
 
-     impactDirection,
-
     cueDistance,
 
     objectDistance,
@@ -2591,13 +2421,12 @@ function kickCandidate(
     postKickDistance:
       secondDistance,
 
-     cutDegrees,
+    cutDegrees:0,
 
     score:
       cueDistance+
       secondDistance+
       objectDistance+
-       approachPenalty+
       38
   };
 }
@@ -3118,46 +2947,71 @@ function speedForShot(s){
 */
 
 function faceText(direction){
-  const amount=
-    direction
-      ?len(direction)
-      :0;
 
   if(
-    amount<.08
+    !direction||
+    len(direction)<.02
   ){
     return"dead center";
   }
 
-  const unit=
-    norm(direction);
+  const x=direction.x;
+  const y=direction.y;
 
-  const angle=
-    (
-      Math.atan2(
-        unit.x,
-        -unit.y
-      )+
-      Math.PI*2
-    )%
-    (Math.PI*2);
+  const ax=Math.abs(x);
+  const ay=Math.abs(y);
 
-  const hour=
-    Math.round(
-      angle/
-      (Math.PI/6)
-    )%12||12;
+  if(
+    ax<.15&&
+    ay<.15
+  ){
+    return"dead center";
+  }
 
-  const depth=
-    amount>=.82
-      ?"near the edge"
-      :amount>=.58
-        ?"three-quarter ball"
-        :amount>=.36
-          ?"half-ball"
-          :"just off center";
+  const horizontal=
+    ax<.15
+      ?""
+      :ax<.45
+        ?(
+            x<0
+              ?"a hair left of center"
+              :"a hair right of center"
+          )
+        :ax<.8
+          ?(
+              x<0
+                ?"a quarter ball left of center"
+                :"a quarter ball right of center"
+            )
+          :(
+              x<0
+                ?"a half ball on the left"
+                :"a half ball on the right"
+            );
 
-  return`around ${hour} o'clock, ${depth}`;
+  const vertical=
+    ay<.15
+      ?""
+      :ay<.45
+        ?(
+            y<0
+              ?"a hair above center"
+              :"a hair below center"
+          )
+        :(
+            y<0
+              ?"high on the ball"
+              :"low on the ball"
+          );
+
+  if(
+    horizontal&&
+    vertical
+  ){
+    return horizontal+" and "+vertical;
+  }
+
+  return horizontal||vertical;
 }
 
 function cueContactDirection(s){
@@ -3187,17 +3041,31 @@ function objectContactDirection(s){
     s.kind==="combination"
   ){
 
-    return aimOffsetDirection(
+    return contactDirection(
       s.combinationBall,
-      s.firstContactPoint,
-      s.transferAngle
+      s.firstContactPoint
     );
   }
 
-  return aimOffsetDirection(
+  /*
+    The object-ball contact is opposite the direction the
+    object ball travels. Use the solved shot vector directly so
+    a shallow cut can never collapse back to center because of
+    an intermediate ghost-ball coordinate.
+  */
+  if(
+    s.objectDirection&&
+    len(s.objectDirection)>.02
+  ){
+    return mul(
+      norm(s.objectDirection),
+      -1
+    );
+  }
+
+  return contactDirection(
     state.object,
-    s.ghost,
-    s.cutDegrees
+    s.ghost
   );
 }
 
@@ -3210,10 +3078,9 @@ function targetContactDirection(s){
     return V(0,0);
   }
 
-  return aimOffsetDirection(
+  return contactDirection(
     s.targetBall,
-    s.secondContactPoint,
-    s.targetCutDegrees
+    s.secondContactPoint
   );
 }
 
@@ -3229,22 +3096,59 @@ function targetContactDirection(s){
    These are two different quantities and are never mixed.
    ============================================================ */
 
-function tipCall(s){
+/*
+  A side-spin call is useful only when it is tied to the route:
+
+  - On a cut, outside English reduces collision throw.
+  - On a kick, the side is chosen from the cue-ball's travel
+    direction along the rail instead of being hard-coded.
+  - On a bank, the cut's outside side is used when there is a
+    real cut to make.
+
+  The vector is in the same left/right/top/bottom coordinate
+  system as the enlarged cue-ball view.
+*/
+function railSpinSign(s){
+  if(!s||!s.rail){
+    return 0;
+  }
+
+  const incoming=
+    s.cueDirection||
+    V(0,0);
+
+  const tangent=
+    s.rail==="top"||
+    s.rail==="bottom"
+      ?incoming.x
+      :incoming.y;
+
+  if(Math.abs(tangent)<.04){
+    return s.rail==="top"||
+      s.rail==="right"
+      ?1
+      :-1;
+  }
 
   /*
-    Center ball is the default. Rail shots are different: the
-    rail changes the cue-ball path, so the recommended side is
-    derived from the turn in the actual route instead of being
-    hard-coded. Long routes get a modest amount of follow so
-    the call is useful at the table without over-prescribing
-    spin.
+    Running English follows the cue ball's tangent travel.
+    The sign is flipped on the opposite-facing rails so the
+    visual left/right call stays consistent with the rebound.
   */
+  const direction=tangent>=0?1:-1;
+
+  return s.rail==="top"||
+    s.rail==="left"
+    ?direction
+    :-direction;
+}
+
+function tipCall(s){
 
   if(!s){
     return{
       vector:V(0,0),
-      text:"center ball",
-      clock:"dead center"
+      text:"Center ball · No English"
     };
   }
 
@@ -3253,71 +3157,79 @@ function tipCall(s){
   ){
     return{
       vector:V(0,0),
-      text:"center ball, no English",
-      clock:"dead center"
+      text:"Center ball · No English"
     };
   }
 
-  let side=V(0,0);
+  const cut=
+    s.cutDegrees||0;
 
-  if(
-    s.kind==="bank"
-  ){
-    side=
-      runningEnglishVector(
-        sub(
-          s.bankPoint,
-          state.object
-        ),
-        sub(
-          s.target,
-          s.bankPoint
-        )
+  const cueDistance=s.cueDistance||0;
+  const objectDistance=s.objectDistance||0;
+
+  let x=0;
+  let y=0;
+
+  if(s.kind==="kick"){
+    /*
+      A kick is the clearest rail-spin case. Use running English
+      from the actual rail travel, with a small follow/draw
+      adjustment for the length of the cue-ball route.
+    */
+    x=.56*railSpinSign(s);
+    y=cueDistance+objectDistance>48
+      ?-.28
+      :-.16;
+  }else{
+    /*
+      The cross product tells which side of the cut the cue is
+      arriving from. Outside English is the opposite side.
+    */
+    const bend=
+      cross2(
+        s.cueDirection||V(0,0),
+        s.objectDirection||V(0,0)
       );
-  }else if(
-    s.kind==="kick"
-  ){
-    side=
-      runningEnglishVector(
-        sub(
-          s.bankPoint,
-          state.cue
-        ),
-        sub(
-          s.ghost,
-          s.bankPoint
-        )
-      );
+
+    if(cut>=6&&Math.abs(bend)>.025){
+      x=
+        (bend>0?-1:1)*
+        (.34+Math.min(.20,cut/260));
+    }
+
+    /*
+      A bank still has a rail-dependent cue-ball route. When
+      the cut itself is nearly straight, use the rail travel
+      rather than silently falling back to a random side.
+    */
+    if(
+      s.kind==="bank"&&
+      Math.abs(x)<.02&&
+      s.rail
+    ){
+      x=.38*railSpinSign(s);
+    }
+
+    /*
+      Follow is useful for medium/long direct and bank shots.
+      Short, delicate cuts stay lower so the call does not
+      invent a large vertical offset where it is not needed.
+    */
+    if(cueDistance>28||objectDistance>32){
+      y=-.42;
+    }else if(cut<12&&cueDistance>18){
+      y=-.28;
+    }
   }
 
-  const routeDistance=
-    s.kind==="kick"
-      ?(
-        s.kickDistance+
-        s.postKickDistance
-      )
-      :s.objectDistance||0;
-
-  const follow=
-    routeDistance>32
-      ?-.30
-      :routeDistance>20
-        ?-.20
-        :0;
-
-  const vector=
-    V(
-      side.x*.62,
-      follow
-    );
+  const vector=V(
+    clamp(x,-.68,.68),
+    clamp(y,-.68,.68)
+  );
 
   return{
     vector,
-    text:shortSpinText(vector),
-    clock:
-      len(vector)<.08
-        ?"dead center"
-        :"custom"
+    text:shortSpinText(vector)
   };
 }
 
@@ -3330,7 +3242,6 @@ function shotCall(s){
     tip:tip,
     tipVector:tip.vector,
     tipText:tip.text,
-    tipClock:tip.clock,
     objectVector:objectContactDirection(s),
     objectText:faceText(
       objectContactDirection(s)
@@ -3370,79 +3281,84 @@ function pocketShortName(
 function shortSpinText(vector){
 
   if(!vector){
-    return"center ball";
+    return"Center ball · No English";
   }
 
   const vertical=
     vector.y<=-.18
-      ?"top spin"
+      ?"Top spin"
       :vector.y>=.18
-        ?"draw"
+        ?"Draw"
         :"";
 
   const horizontal=
     vector.x<=-.18
-      ?"left English"
+      ?"Left English"
       :vector.x>=.18
-        ?"right English"
+        ?"Right English"
         :"";
 
   if(vertical&&horizontal){
-    return vertical+", "+horizontal;
+    return vertical+" + "+horizontal;
   }
 
   if(vertical){
-    return vertical+", no English";
+    return vertical+" · No English";
   }
 
   if(horizontal){
-    return"center height, "+horizontal;
+    return"Center height · "+horizontal;
   }
 
-  return"center ball, no English";
+  return"Center ball · No English";
 }
 
 function shortFaceText(direction){
-  const amount=
-    direction
-      ?len(direction)
-      :0;
 
   if(
-    amount<.08
+    !direction||
+    len(direction)<.02
   ){
-    return"dead center";
+    return"Dead center";
   }
 
-  const unit=
-    norm(direction);
+  const x=direction.x;
+  const y=direction.y;
 
-  const angle=
-    (
-      Math.atan2(
-        unit.x,
-        -unit.y
-      )+
-      Math.PI*2
-    )%
-    (Math.PI*2);
+  const ax=Math.abs(x);
+  const ay=Math.abs(y);
 
-  const hour=
-    Math.round(
-      angle/
-      (Math.PI/6)
-    )%12||12;
+  if(
+    ax<.15&&
+    ay<.15
+  ){
+    return"Dead center";
+  }
+
+  const side=
+    ax>=ay
+      ?(x<0?"left":"right")
+      :(y<0?"top":"bottom");
+
+  const amount=
+    Math.max(ax,ay);
 
   const depth=
-    amount>=.82
-      ?"near the edge"
-      :amount>=.58
-        ?"three-quarter ball"
-        :amount>=.36
-          ?"half-ball"
-          :"just off center";
+    amount>=.72
+      ?"Edge"
+      :amount>=.45
+        ?"Half ball"
+        :"Just off center";
 
-  return`around ${hour} o'clock, ${depth}`;
+  if(depth==="Edge"){
+    return side.charAt(0).toUpperCase()+side.slice(1)+" edge";
+  }
+
+  if(depth==="Half ball"){
+    return"Half ball "+side;
+  }
+
+  return"Just "+side+" of center";
 }
 
 function callLine(step,text){
@@ -3465,13 +3381,13 @@ function instructionHTML(s){
 
       return callLine(
         "Setup",
-        "Place a player's ball and a target ball."
+        "Place a player ball + target ball."
       );
     }
 
     return callLine(
       "Setup",
-      "Place the cue ball and target ball."
+      "Place the cue ball + target ball."
     );
   }
 
@@ -3480,9 +3396,6 @@ function instructionHTML(s){
 
   const pocketMarkup=
     `<span class="highlight">${pocketShortName(s.pocket)}</span>`;
-
-  const spinMarkup=
-    `<span class="highlight">${shortSpinText(call.tipVector)}</span>`;
 
   const objectFace=
     shortFaceText(call.objectVector);
@@ -3498,13 +3411,10 @@ function instructionHTML(s){
   const lines=[
     callLine(
       "Cue",
-      spinMarkup
+      shortSpinText(call.tipVector)
     )
   ];
 
-  /*
-    COMBINATION
-  */
   if(
     s.kind==="combination"
   ){
@@ -3515,46 +3425,43 @@ function instructionHTML(s){
     lines.push(
       callLine(
         "Hit",
-        `hit the ${ballMarkup} at `+
-        `<span class="neutral-emphasis">${objectFace}</span>`
+        `${ballMarkup} · ${objectFace}`
       ),
       callLine(
-        "Result",
-        `${ballMarkup} into the ${second} at `+
-        `<span class="neutral-emphasis">${shortFaceText(call.targetVector)}</span>`+
-        ` &rarr; ${pocketMarkup}`
+        "Combo",
+        `${ballMarkup} → ${second} · ${shortFaceText(call.targetVector)}`
+      ),
+      callLine(
+        "Pocket",
+        pocketMarkup
       )
     );
 
     return lines.join("");
   }
 
-  /*
-    KICK
-  */
   if(
     s.kind==="kick"
   ){
 
     lines.push(
       callLine(
-        "Hit",
-        `the <span class="highlight">${railText(s.rail)}</span> first, `+
-        `then aim at the ${ballMarkup} around `+
-        `<span class="neutral-emphasis">${objectFace}</span>`
+        "First",
+        `${railText(s.rail)} · use the diamond aim`
       ),
       callLine(
-        "Result",
-        `${ballMarkup} &rarr; ${pocketMarkup}`
+        "Hit",
+        `${ballMarkup} · ${objectFace}`
+      ),
+      callLine(
+        "Pocket",
+        pocketMarkup
       )
     );
 
     return lines.join("");
   }
 
-  /*
-    BANK
-  */
   if(
     s.kind==="bank"
   ){
@@ -3562,34 +3469,27 @@ function instructionHTML(s){
     lines.push(
       callLine(
         "Hit",
-        `aim the ${ballMarkup} at `+
-        `<span class="neutral-emphasis">${objectFace}</span>`
+        `${ballMarkup} · ${objectFace}`
       ),
       callLine(
-        "Result",
-        `${ballMarkup} off the `+
-        `<span class="highlight">${railText(s.rail)}</span>`+
-        ` &rarr; ${pocketMarkup}`
+        "Bank",
+        `${railText(s.rail)} → ${pocketMarkup}`
       )
     );
 
     return lines.join("");
   }
 
-  /*
-    STRAIGHT AND CUT
-  */
   lines.push(
     callLine(
       "Hit",
       s.kind==="straight"
-        ?`aim at the ${ballMarkup} <span class="neutral-emphasis">dead center</span> (straight in)`
-        :`aim at the ${ballMarkup} around `+
-          `<span class="neutral-emphasis">${objectFace}</span>`
+        ?`${ballMarkup} · Dead center`
+        :`${ballMarkup} · ${objectFace}`
     ),
     callLine(
-      "Result",
-      `${ballMarkup} &rarr; ${pocketMarkup}`
+      "Pocket",
+      pocketMarkup
     )
   );
 
@@ -3604,10 +3504,10 @@ function instructionHTML(s){
 function railText(rail){
 
   const names={
-    top:"top rail",
-    bottom:"bottom rail",
-    left:"left rail",
-    right:"right rail"
+    top:"Top rail",
+    bottom:"Bottom rail",
+    left:"Left rail",
+    right:"Right rail"
   };
 
   return names[rail]||"rail";
@@ -4843,6 +4743,31 @@ function largeBall(
 
     c.stroke();
 
+    /*
+      The crosshair makes the cue-ball reference frame clear.
+      The red tip dot is placed against this fixed centerline,
+      not against a changing canvas coordinate.
+    */
+    c.save();
+
+    c.beginPath();
+    c.arc(x,y,r*.94,0,Math.PI*2);
+    c.clip();
+
+    c.strokeStyle="rgba(36,48,54,.62)";
+    c.lineWidth=Math.max(1.25,r*.022);
+    c.lineCap="butt";
+    c.setLineDash([Math.max(4,r*.14),Math.max(3,r*.10)]);
+
+    c.beginPath();
+    c.moveTo(x-r,y);
+    c.lineTo(x+r,y);
+    c.moveTo(x,y-r);
+    c.lineTo(x,y+r);
+    c.stroke();
+
+    c.restore();
+
     return{
       x,
       y,
@@ -5017,14 +4942,11 @@ function largeBall(
    ============================================================ */
 
 /*
-  The red dot is placed from the exact same vector that
-  generates the written contact description.
+  The red dot is placed from the exact same contact vector
+  that generates the written contact description.
 
-  Aim vectors already contain their distance from center:
-  zero means center, while .98 is an almost edge hit. The
-  previous version discarded that distance and always placed
-  the dot at .78 radius, which made straight shots look cut
-  and thin cuts look too central.
+  It is deliberately small enough to resemble a cue-tip
+  contact point rather than an oversized target marker.
 */
 
 function drawContactMarker(
@@ -5041,21 +4963,24 @@ function drawContactMarker(
     return;
   }
 
+  const markerDistance=
+    ball.r*.84;
+
   const markerRadius=
     Math.max(
       2.5,
-      ball.r*.105
+      ball.r*.115
     );
 
   const x=
     ball.x+
     direction.x*
-    ball.r*.94;
+    markerDistance;
 
   const y=
     ball.y+
     direction.y*
-    ball.r*.94;
+    markerDistance;
 
   c.beginPath();
 
@@ -5081,6 +5006,15 @@ function drawContactMarker(
     );
 
   c.stroke();
+
+  c.beginPath();
+  c.moveTo(ball.x,ball.y);
+  c.lineTo(x,y);
+  c.strokeStyle="rgba(255,70,82,.38)";
+  c.lineWidth=Math.max(.8,markerRadius*.42);
+  c.setLineDash([3,3]);
+  c.stroke();
+  c.setLineDash([]);
 }
 
 function drawCenterMarker(
@@ -5091,7 +5025,7 @@ function drawCenterMarker(
   const markerRadius=
     Math.max(
       2.5,
-      ball.r*.105
+      ball.r*.115
     );
 
   c.beginPath();
@@ -5378,16 +5312,16 @@ function render(){
   ).textContent=
     s&&
     s.kind==="combination"
-      ?`${s.combinationBall.number} · Where To Aim The Cue Ball`
-      :`${state.object.number} · Where To Aim The Cue Ball`;
+      ?`${s.combinationBall.number} · First contact`
+      :`${state.object.number} · Contact point`;
 
   document.getElementById(
     "targetViewLabel"
   ).textContent=
     s&&
     s.kind==="combination"
-      ?`${s.targetBall.number} · Where To Aim The ${s.combinationBall.number}`
-      :"Target Ball";
+      ?`${s.targetBall.number} · Second contact`
+      :"Target ball · Contact point";
 
   renderPockets();
   renderModes();
