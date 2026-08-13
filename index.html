@@ -616,6 +616,38 @@ button{
   }
 }
 </style>
+<style>
+  /* Shot Caller revision polish: keep every control in the side rail. */
+  .header { padding: 0 2px; }
+  .brand { gap: 12px; }
+  .brand-name {
+    letter-spacing: .09em;
+    font-size: 22px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .brand-name::first-letter { color: var(--lime); }
+  .reset, #deleteBall {
+    min-width: 74px;
+    min-height: 34px;
+    padding: 7px 14px;
+    font-size: 10px;
+    letter-spacing: .08em;
+  }
+  .pro-instruction .call-line:nth-child(3) { display: none; }
+  .ownership-help { display: grid; gap: 4px; }
+  .ownership-section.eight-ball-auto .ownership-label,
+  .ownership-section.eight-ball-auto .ownership-buttons {
+    display: none;
+  }
+  .ownership-section.eight-ball-auto .ownership-help {
+    margin-top: 8px;
+  }
+  @media (max-width: 520px) {
+    .brand-name { font-size: 19px; letter-spacing: .075em; }
+    .reset, #deleteBall { min-width: 74px; min-height: 34px; }
+  }
+</style>
 </head>
 
 <body>
@@ -5469,7 +5501,7 @@ function render(){
   ).textContent=
     s&&
     s.kind==="combination"
-      ?"Combination Ball"
+      ?"Combo Ball"
       :"Object Ball";
 
   document.getElementById(
@@ -5883,6 +5915,8 @@ function getSelectedTableBall(){
 
 function setBallOwner(owner){
 
+  if(state.selectedRackBall===8){ owner="target"; }
+
   const number=
     state.selectedRackBall;
 
@@ -5915,11 +5949,13 @@ function setBallOwner(owner){
       x:state.object.x,
       y:state.object.y,
       owner:
-        owner==="target"
+        number===8
           ?"target"
-          :hasTarget
-            ?owner
-            :"target",
+          :owner==="target"
+            ?"target"
+            :hasTarget
+              ?owner
+              :"target",
       role:
         owner==="target"||
         !hasTarget
@@ -6160,6 +6196,8 @@ function renderOwnership(){
 
   const selected=
     getSelectedTableBall();
+
+  document.querySelector(".ownership-section")?.classList.toggle("eight-ball-auto", selected?.number===8);
 
   const buttons=
     document.querySelectorAll(
@@ -6418,13 +6456,17 @@ function moveSelectedBall(p){
       x:next.x,
       y:next.y,
       owner:
-        hasTarget
-          ?"my"
-          :"target",
+        number===8
+          ?"target"
+          :hasTarget
+            ?"my"
+            :"target",
       role:
-        hasTarget
-          ?"blocker"
-          :"object"
+        number===8
+          ?"object"
+          :hasTarget
+            ?"blocker"
+            :"object"
     };
 
     state.tableBalls.push(
