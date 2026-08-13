@@ -643,7 +643,7 @@ button{
     <div class="ball-panel">
       <div class="ball-head">
         <div class="ball-label" id="cueViewLabel">
-          Cue Ball · Where To Hit With The Tip
+          Cue Ball · Where To Place The Tip
         </div>
       </div>
 
@@ -833,7 +833,7 @@ button{
     </div>
 
     <div class="ownership-help">
-      Player's balls can be used as the first ball in a combo. Opponent's balls are blockers only.
+      Player's balls can be used to hit a combo. Opponent's balls are blockers only and will not be used in combos.
     </div>
 
   </div>
@@ -1023,10 +1023,6 @@ function dot(a,b){
   return a.x*b.x+a.y*b.y;
 }
 
-function cross(a,b){
-  return a.x*b.y-a.y*b.x;
-}
-
 function len(a){
   return Math.hypot(
     a.x,
@@ -1206,8 +1202,7 @@ function validCueApproach(
 function cutAngleDegrees(
   cue,
   ghost,
-  object,
-  target
+  object
 ){
 
   const cueTravel=
@@ -1221,8 +1216,8 @@ function cutAngleDegrees(
   const objectTravel=
     norm(
       sub(
-        target,
-        object
+        object,
+        ghost
       )
     );
 
@@ -1458,6 +1453,103 @@ function contactDirection(
   );
 }
 
+function cross(a,b){
+  return a.x*b.y-a.y*b.x;
+}
+
+function angleBetween(a,b){
+  if(
+    len(a)<.01||
+    len(b)<.01
+  ){
+    return 0;
+  }
+
+  return Math.acos(
+    clamp(
+      dot(
+        norm(a),
+        norm(b)
+      ),
+      -1,
+      1
+    )
+  )*
+  180/
+  Math.PI;
+}
+
+/*
+  The enlarged object-ball view is an aiming view, not a
+  literal drawing of the two ball surfaces touching.
+
+  A straight shot therefore lands at the center of the view.
+  As the cut gets thinner, the aim point moves toward the edge
+  by sin(cut angle). This is the same relationship used by the
+  ghost-ball geometry, so the dot and the shot call agree.
+*/
+function aimOffsetDirection(
+  center,
+  contactPoint,
+  cutDegrees
+){
+  const direction=
+    contactDirection(
+      center,
+      contactPoint
+    );
+
+  if(
+    len(direction)<.01||
+    !Number.isFinite(cutDegrees)||
+    cutDegrees<1
+  ){
+    return V(0,0);
+  }
+
+  return mul(
+    direction,
+    clamp(
+      Math.sin(
+        cutDegrees*
+        Math.PI/
+        180
+      ),
+      0,
+      .98
+    )
+  );
+}
+
+/*
+  Running English is determined by the direction in which the
+  shot turns at the rail. This avoids the old hard-coded answer
+  that could call the opposite side on a mirror-image bank.
+*/
+function runningEnglishVector(
+  incoming,
+  outgoing
+){
+  const turn=
+    cross(
+      incoming,
+      outgoing
+    );
+
+  if(
+    Math.abs(turn)<.035
+  ){
+    return V(0,0);
+  }
+
+  return V(
+    turn>0
+      ?1
+      :-1,
+    0
+  );
+}
+
 /* ============================================================
    DIRECT SHOT
    ============================================================ */
@@ -1530,8 +1622,7 @@ function directCandidate(
     cutAngleDegrees(
       cue,
       ghost,
-      object,
-      target
+      object
     );
 
   if(
@@ -1604,6 +1695,14 @@ function directCandidate(
 
     objectDirection,
 
+     impactDirection:
+       norm(
+         sub(
+           object,
+           ghost
+         )
+       ),
+
     cueDistance,
     objectDistance,
 
@@ -1649,7 +1748,7 @@ function combinationCandidate(
     HARD COMBO RULE:
 
     The first ball struck must be the player's ball.
-    Opponent balls are NEVER used as the first ball in a combo.
+    Opponent balls are NEVER eligible as combination balls.
   */
   if(
     firstBall.owner!=="my"
@@ -1812,32 +1911,27 @@ function combinationCandidate(
     );
 
   const transferAngle=
-    Math.acos(
-      clamp(
-        dot(
-          firstIncoming,
-          firstOutgoing
-        ),
-        -1,
-        1
+    angleBetween(
+      firstIncoming,
+      firstOutgoing
+    );
+
+  const targetIncoming=
+    norm(
+      sub(
+        secondBallContactPoint,
+        firstBall
       )
-    )*
-    180/
-    Math.PI;
+    );
+
+  const targetOutgoing=
+    secondToPocket;
 
   const targetCutDegrees=
-    Math.acos(
-      clamp(
-        dot(
-          firstOutgoing,
-          secondToPocket
-        ),
-        -1,
-        1
-      )
-    )*
-    180/
-    Math.PI;
+    angleBetween(
+      targetIncoming,
+      targetOutgoing
+    );
 
   /*
     Reject physically extreme combinations.
@@ -1926,6 +2020,8 @@ function combinationCandidate(
 
     objectDirection:firstOutgoing,
 
+    impactDirection:firstIncoming,
+
     cueDistance,
 
     objectDistance:
@@ -1939,14 +2035,9 @@ function combinationCandidate(
       secondDistance,
 
     transferAngle,
-
-    firstCutDegrees:
-      transferAngle,
-
     targetCutDegrees,
 
-    cutDegrees:
-      transferAngle,
+    cutDegrees:0,
 
     score
   };
@@ -2225,19 +2316,19 @@ function bankCandidate(
       )
     );
 
-  const cutDegrees=
-    Math.acos(
-      clamp(
-        dot(
-          cueDirection,
-          objectDirection
-        ),
-        -1,
-        1
+  const incoming=
+    norm(
+      sub(
+        object,
+        ghost
       )
-    )*
-    180/
-    Math.PI;
+    );
+
+  const cutDegrees=
+    angleBetween(
+      cueDirection,
+      incoming
+    );
 
   if(
     !Number.isFinite(cutDegrees)||
@@ -2264,6 +2355,26 @@ function bankCandidate(
       target
     );
 
+  const postBankDirection=
+    norm(
+      sub(
+        target,
+        bankPoint
+      )
+    );
+
+  const bankApproachPenalty=
+    pocketApproachPenalty(
+      pocket,
+      postBankDirection
+    );
+
+  if(
+    bankApproachPenalty===null
+  ){
+    return null;
+  }
+
   return{
     kind:"bank",
 
@@ -2276,6 +2387,8 @@ function bankCandidate(
 
     cueDirection,
     objectDirection,
+
+     impactDirection:incoming,
 
     cueDistance,
 
@@ -2290,11 +2403,18 @@ function bankCandidate(
 
     cutDegrees,
 
+     approachDegrees:
+       pocketApproachDegrees(
+         pocket,
+         postBankDirection
+       ),
+
     score:
       cueDistance+
       firstLeg+
       secondLeg+
       25+
+       bankApproachPenalty+
       Math.max(
         0,
         cutDegrees-40
@@ -2404,6 +2524,40 @@ function kickCandidate(
       pocket
     );
 
+  const impactDirection=
+    norm(
+      sub(
+        ghost,
+        kickPoint
+      )
+    );
+
+  const objectIncoming=
+    norm(
+      sub(
+        object,
+        ghost
+      )
+    );
+
+  const cutDegrees=
+    angleBetween(
+      impactDirection,
+      objectIncoming
+    );
+
+  const approachPenalty=
+    pocketApproachPenalty(
+      pocket,
+      objectDirection
+    );
+
+  if(
+    approachPenalty===null
+  ){
+    return null;
+  }
+
   return{
     kind:"kick",
 
@@ -2425,6 +2579,8 @@ function kickCandidate(
 
     objectDirection,
 
+     impactDirection,
+
     cueDistance,
 
     objectDistance,
@@ -2435,12 +2591,13 @@ function kickCandidate(
     postKickDistance:
       secondDistance,
 
-    cutDegrees:0,
+     cutDegrees,
 
     score:
       cueDistance+
       secondDistance+
       objectDistance+
+       approachPenalty+
       38
   };
 }
@@ -2961,8 +3118,46 @@ function speedForShot(s){
 */
 
 function faceText(direction){
+  const amount=
+    direction
+      ?len(direction)
+      :0;
 
-  return shortFaceText(direction);
+  if(
+    amount<.08
+  ){
+    return"dead center";
+  }
+
+  const unit=
+    norm(direction);
+
+  const angle=
+    (
+      Math.atan2(
+        unit.x,
+        -unit.y
+      )+
+      Math.PI*2
+    )%
+    (Math.PI*2);
+
+  const hour=
+    Math.round(
+      angle/
+      (Math.PI/6)
+    )%12||12;
+
+  const depth=
+    amount>=.82
+      ?"near the edge"
+      :amount>=.58
+        ?"three-quarter ball"
+        :amount>=.36
+          ?"half-ball"
+          :"just off center";
+
+  return`around ${hour} o'clock, ${depth}`;
 }
 
 function cueContactDirection(s){
@@ -2992,15 +3187,17 @@ function objectContactDirection(s){
     s.kind==="combination"
   ){
 
-    return contactDirection(
+    return aimOffsetDirection(
       s.combinationBall,
-      s.firstContactPoint
+      s.firstContactPoint,
+      s.transferAngle
     );
   }
 
-  return contactDirection(
+  return aimOffsetDirection(
     state.object,
-    s.ghost
+    s.ghost,
+    s.cutDegrees
   );
 }
 
@@ -3013,9 +3210,10 @@ function targetContactDirection(s){
     return V(0,0);
   }
 
-  return contactDirection(
+  return aimOffsetDirection(
     s.targetBall,
-    s.secondContactPoint
+    s.secondContactPoint,
+    s.targetCutDegrees
   );
 }
 
@@ -3033,20 +3231,14 @@ function targetContactDirection(s){
 
 function tipCall(s){
 
-/*
-  Tip placement is derived from the shot geometry rather than
-  using one generic center-ball suggestion.
-
-  On a direct cut, outside English helps reduce cut-induced
-  throw, while follow keeps the cue ball rolling through the
-  contact. The amount scales with the actual cut angle, so a
-  thin cut gets a visibly different recommendation from a
-  straight shot.
-
-  Banks, kicks, and combos stay at center ball here because the
-  route solver does not model spin-dependent rail or throw
-  compensation for those shots.
-*/
+  /*
+    Center ball is the default. Rail shots are different: the
+    rail changes the cue-ball path, so the recommended side is
+    derived from the turn in the actual route instead of being
+    hard-coded. Long routes get a modest amount of follow so
+    the call is useful at the table without over-prescribing
+    spin.
+  */
 
   if(!s){
     return{
@@ -3057,8 +3249,6 @@ function tipCall(s){
   }
 
   if(
-    s.kind==="bank"||
-    s.kind==="kick"||
     s.kind==="combination"
   ){
     return{
@@ -3068,101 +3258,67 @@ function tipCall(s){
     };
   }
 
-  const cut=
-    s.cutDegrees||0;
+  let side=V(0,0);
 
-  const cueDistance=
-    s.cueDistance||0;
-
-  if(cut<6){
-
-    if(cueDistance>32){
-
-      const follow=
-        clamp(
-          .25+
-          Math.min(
-            cueDistance/100,
-            .45
-          )*.35+
-          Math.min(
-            (s.objectDistance||0)/100,
-            .45
-          )*.18,
-          .25,
-          .48
-        );
-
-      const vector=
-        V(
-          0,
-          -follow
-        );
-
-      return{
-        vector,
-        text:shortSpinText(vector),
-        clock:"12 o'clock"
-      };
-    }
-
-    return{
-      vector:V(0,0),
-      text:"center ball, no English",
-      clock:"dead center"
-    };
+  if(
+    s.kind==="bank"
+  ){
+    side=
+      runningEnglishVector(
+        sub(
+          s.bankPoint,
+          state.object
+        ),
+        sub(
+          s.target,
+          s.bankPoint
+        )
+      );
+  }else if(
+    s.kind==="kick"
+  ){
+    side=
+      runningEnglishVector(
+        sub(
+          s.bankPoint,
+          state.cue
+        ),
+        sub(
+          s.ghost,
+          s.bankPoint
+        )
+      );
   }
 
-  const sideSign=
-    cross(
-      s.cueDirection,
-      s.objectDirection
-    )>0
-      ?-1
-      :1;
-
-  const sideAmount=
-    clamp(
-      .28+
-      Math.sin(
-        cut*
-        Math.PI/
-        180
-      )*
-      .64,
-      .28,
-      .86
-    );
+  const routeDistance=
+    s.kind==="kick"
+      ?(
+        s.kickDistance+
+        s.postKickDistance
+      )
+      :s.objectDistance||0;
 
   const follow=
-    clamp(
-      .31+
-      Math.sin(
-        cut*
-        Math.PI/
-        180
-      )*
-      .34+
-      Math.min(
-        (s.objectDistance||0)/100,
-        .45
-      )*.20,
-      .31,
-      .78
-    );
+    routeDistance>32
+      ?-.30
+      :routeDistance>20
+        ?-.20
+        :0;
 
   const vector=
     V(
-      sideSign*sideAmount,
-      -follow
+      side.x*.62,
+      follow
     );
 
   return{
     vector,
     text:shortSpinText(vector),
-    clock:tipClockText(vector)
+    clock:
+      len(vector)<.08
+        ?"dead center"
+        :"custom"
   };
-
 }
 
 function shotCall(s){
@@ -3176,16 +3332,12 @@ function shotCall(s){
     tipText:tip.text,
     tipClock:tip.clock,
     objectVector:objectContactDirection(s),
-    objectText:contactCallText(
-      objectContactDirection(s),
-      s.kind==="combination"
-        ?s.firstCutDegrees
-        :s.cutDegrees
+    objectText:faceText(
+      objectContactDirection(s)
     ),
     targetVector:targetContactDirection(s),
-    targetText:contactCallText(
-      targetContactDirection(s),
-      s.targetCutDegrees
+    targetText:faceText(
+      targetContactDirection(s)
     )
   };
 }
@@ -3250,123 +3402,47 @@ function shortSpinText(vector){
   return"center ball, no English";
 }
 
-function tipClockText(vector){
+function shortFaceText(direction){
+  const amount=
+    direction
+      ?len(direction)
+      :0;
 
   if(
-    !vector||
-    len(vector)<.08
+    amount<.08
   ){
     return"dead center";
   }
 
-  const angle=
-    (
-      Math.atan2(
-        vector.x,
-        -vector.y
-      )*
-      180/
-      Math.PI+
-      360
-    )%
-    360;
-
-  const clock=
-    Math.round(
-      angle/
-      30
-    )||
-    12;
-
-  return`${clock} o'clock`;
-}
-
-function shortFaceText(direction){
-
-  if(
-    !direction||
-    len(direction)<.02
-  ){
-    return"center line";
-  }
-
-  return"the "+clockFace(direction)+" side";
-}
-
-function contactCallText(
-  direction,
-  cutDegrees=0
-){
-
-  if(
-    !direction||
-    len(direction)<.02
-  ){
-    return"center-line contact";
-  }
-
-  const cut=
-    Number.isFinite(cutDegrees)
-      ?cutDegrees
-      :0;
-
-  if(cut<6){
-    return"center-line contact";
-  }
-
-  const fraction=
-    clamp(
-      Math.cos(
-        cut*
-        Math.PI/
-        180
-      ),
-      0,
-      1
-    );
-
-  const fractionText=
-    fraction>=.88
-      ?"full-ball"
-      :fraction>=.63
-        ?"three-quarter-ball"
-        :fraction>=.38
-          ?"half-ball"
-          :fraction>=.16
-            ?"quarter-ball"
-            :"thin";
-
-  if(
-    fraction<.16
-  ){
-    return`thin contact toward the ${clockFace(direction)} edge`;
-  }
-
-  return`${fractionText} contact toward ${clockFace(direction)}`;
-}
-
-function clockFace(direction){
+  const unit=
+    norm(direction);
 
   const angle=
     (
       Math.atan2(
-        direction.x,
-        -direction.y
-      )*
-      180/
-      Math.PI+
-      360
+        unit.x,
+        -unit.y
+      )+
+      Math.PI*2
     )%
-    360;
+    (Math.PI*2);
 
   const hour=
     Math.round(
       angle/
-      30
-    )||
-    12;
+      (Math.PI/6)
+    )%12||12;
 
-  return`${hour} o'clock`;
+  const depth=
+    amount>=.82
+      ?"near the edge"
+      :amount>=.58
+        ?"three-quarter ball"
+        :amount>=.36
+          ?"half-ball"
+          :"just off center";
+
+  return`around ${hour} o'clock, ${depth}`;
 }
 
 function callLine(step,text){
@@ -3409,12 +3485,7 @@ function instructionHTML(s){
     `<span class="highlight">${shortSpinText(call.tipVector)}</span>`;
 
   const objectFace=
-    contactCallText(
-      call.objectVector,
-      s.kind==="combination"
-        ?s.firstCutDegrees
-        :s.cutDegrees
-    );
+    shortFaceText(call.objectVector);
 
   const objectNumber=
     s.kind==="combination"
@@ -3444,16 +3515,13 @@ function instructionHTML(s){
     lines.push(
       callLine(
         "Hit",
-        `the ${ballMarkup} with a `+
+        `hit the ${ballMarkup} at `+
         `<span class="neutral-emphasis">${objectFace}</span>`
       ),
       callLine(
         "Result",
-        `${ballMarkup} into the ${second} with a `+
-        `<span class="neutral-emphasis">${contactCallText(
-          call.targetVector,
-          s.targetCutDegrees
-        )}</span>`+
+        `${ballMarkup} into the ${second} at `+
+        `<span class="neutral-emphasis">${shortFaceText(call.targetVector)}</span>`+
         ` &rarr; ${pocketMarkup}`
       )
     );
@@ -3472,7 +3540,7 @@ function instructionHTML(s){
       callLine(
         "Hit",
         `the <span class="highlight">${railText(s.rail)}</span> first, `+
-        `then the ${ballMarkup} with a `+
+        `then aim at the ${ballMarkup} around `+
         `<span class="neutral-emphasis">${objectFace}</span>`
       ),
       callLine(
@@ -3494,7 +3562,7 @@ function instructionHTML(s){
     lines.push(
       callLine(
         "Hit",
-        `the ${ballMarkup} with a `+
+        `aim the ${ballMarkup} at `+
         `<span class="neutral-emphasis">${objectFace}</span>`
       ),
       callLine(
@@ -3515,8 +3583,8 @@ function instructionHTML(s){
     callLine(
       "Hit",
       s.kind==="straight"
-        ?`the ${ballMarkup} <span class="neutral-emphasis">through the center line</span> (straight in)`
-        :`the ${ballMarkup} with a `+
+        ?`aim at the ${ballMarkup} <span class="neutral-emphasis">dead center</span> (straight in)`
+        :`aim at the ${ballMarkup} around `+
           `<span class="neutral-emphasis">${objectFace}</span>`
     ),
     callLine(
@@ -4949,11 +5017,14 @@ function largeBall(
    ============================================================ */
 
 /*
-  The red dot is placed from the exact same contact vector
-  that generates the written contact description.
+  The red dot is placed from the exact same vector that
+  generates the written contact description.
 
-  It is deliberately small enough to resemble a cue-tip
-  contact point rather than an oversized target marker.
+  Aim vectors already contain their distance from center:
+  zero means center, while .98 is an almost edge hit. The
+  previous version discarded that distance and always placed
+  the dot at .78 radius, which made straight shots look cut
+  and thin cuts look too central.
 */
 
 function drawContactMarker(
@@ -4970,9 +5041,6 @@ function drawContactMarker(
     return;
   }
 
-  const markerDistance=
-    ball.r*.92;
-
   const markerRadius=
     Math.max(
       2.5,
@@ -4982,12 +5050,12 @@ function drawContactMarker(
   const x=
     ball.x+
     direction.x*
-    markerDistance;
+    ball.r*.94;
 
   const y=
     ball.y+
     direction.y*
-    markerDistance;
+    ball.r*.94;
 
   c.beginPath();
 
@@ -5310,15 +5378,15 @@ function render(){
   ).textContent=
     s&&
     s.kind==="combination"
-      ?`${s.combinationBall.number} · Where The Cue Ball Contacts`
-      :`${state.object.number} · Where The Cue Ball Contacts`;
+      ?`${s.combinationBall.number} · Where To Aim The Cue Ball`
+      :`${state.object.number} · Where To Aim The Cue Ball`;
 
   document.getElementById(
     "targetViewLabel"
   ).textContent=
     s&&
     s.kind==="combination"
-      ?`${s.targetBall.number} · Where The ${s.combinationBall.number} Contacts`
+      ?`${s.targetBall.number} · Where To Aim The ${s.combinationBall.number}`
       :"Target Ball";
 
   renderPockets();
