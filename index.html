@@ -1,917 +1,460 @@
-# Shot Caller - Intelligent BCA Shot Selection Advisor
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shot Caller - Professional Billiards Simulator</title>
-    <!-- Tailwind CSS for modern layouts -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
-        
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: #05070f;
-            color: #f3f4f6;
-            overflow-x: hidden;
-        }
-
-        .heading-font {
-
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #05070f;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #111827;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #1f2937;
-        }
-
-        /* Premium Tournament-Grade Cyclop / Aramith Felt color gradient emulation */
-
-        .pool-table-felt {
-            background: radial-gradient(circle at center, #007749 0%, #004d30 70%, #002618 100%);
-            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.9);
-        }
-
-        /* Luxury Cyber-Sportsbook Glassmorphic Panel Styling */
-        .glass-panel {
-            background: linear-gradient(135deg, rgba(13, 18, 36, 0.8) 0%, rgba(9, 11, 23, 0.9) 100%);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
-        }
-
-        /* Modern interactive glowing utilities */
-        .glow-emerald {
-            box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.3);
-        }
-        .glow-table {
-            box-shadow: 0 0 45px -10px rgba(0, 119, 73, 0.25), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Shot Caller - Professional Billiards Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05070f;
+      --panel-a: rgba(13, 18, 36, .86);
+      --panel-b: rgba(9, 11, 23, .95);
+      --muted: #64748b;
+      --border: rgba(255, 255, 255, .06);
+      --emerald: #10b981;
+      --sky: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); }
+    body {
+      color: #e2e8f0;
+      font-family: Outfit, system-ui, sans-serif;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 70% 15%, rgba(9, 78, 59, .16), transparent 28%),
+        linear-gradient(135deg, #05070f, #080b16 55%, #06120f);
+    }
+    button, select { font: inherit; }
+    button { cursor: pointer; }
+    .heading { font-family: "Space Grotesk", sans-serif; }
+    .glass {
+      background: linear-gradient(135deg, var(--panel-a), var(--panel-b));
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, .7);
+      backdrop-filter: blur(16px);
+    }
+    .app { min-height: 100dvh; }
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 12px 24px;
+      border-bottom: 1px solid #0f172a;
+    }
+    .brand { display: flex; min-width: 0; align-items: center; gap: 12px; }
+    .logo {
+      width: 40px; height: 40px; flex: 0 0 40px;
+      display: grid; place-items: center; border-radius: 50%;
+      border: 1px solid #334155;
+      background: linear-gradient(135deg, #475569, #020617 60%, #000);
+      box-shadow: 0 8px 18px rgba(0,0,0,.5);
+    }
+    .logo::before {
+      content: ""; width: 20px; height: 20px; display: grid; place-items: center;
+      border-radius: 50%; background: #f8fafc; color: #020617;
+      font: 800 12px system-ui, sans-serif;
+    }
+    .logo::after { content: "8"; position: absolute; color: #020617; font: 800 12px system-ui, sans-serif; }
+    .brand-copy { min-width: 0; }
+    .brand-title { display: flex; align-items: center; gap: 9px; margin: 0; color: #fff; font-size: 24px; line-height: 1; letter-spacing: -.04em; }
+    .engine-badge {
+      display: inline-flex; align-items: center; white-space: nowrap;
+      border: 1px solid rgba(16,185,129,.25); border-radius: 999px;
+      padding: 4px 9px; color: #34d399; background: rgba(16,185,129,.1);
+      font: 700 9px Outfit, sans-serif; letter-spacing: .14em;
+    }
+    .subtitle { margin: 5px 0 0; color: #64748b; font-size: 11px; white-space: nowrap; }
+    .reset-btn, .mode-btn, .role-btn {
+      color: #cbd5e1; border: 1px solid #1e293b; background: rgba(15,23,42,.78);
+      transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease;
+    }
+    .reset-btn:hover, .mode-btn:hover, .role-btn:hover { border-color: #475569; color: #fff; }
+    .reset-btn:active, .mode-btn:active, .role-btn:active { transform: translateY(1px); }
+    .reset-btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; padding: 9px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .reset-icon { width: 14px; height: 14px; }
+    .workspace {
+      display: grid; grid-template-columns: minmax(250px, 4fr) minmax(0, 8fr);
+      gap: 20px; width: min(1400px, 100%); margin: 0 auto; padding: 20px;
+    }
+    .left, .right { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .panel { border-radius: 16px; padding: 20px; }
+    .panel-title {
+      display: flex; align-items: center; gap: 9px; margin: 0 0 16px;
+      color: #94a3b8; font: 700 12px "Space Grotesk", sans-serif;
+      text-transform: uppercase; letter-spacing: .09em;
+    }
+    .panel-title::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+    .strategy .panel-title::before { background: var(--sky); box-shadow: 0 0 8px var(--sky); }
+    .mode-grid, .role-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .role-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .mode-btn {
+      min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+      border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .mode-btn.active { border-color: rgba(16,185,129,.45); color: #fff; background: rgba(16,185,129,.11); box-shadow: 0 0 20px -5px rgba(16,185,129,.45); }
+    .mode-btn.remove-active { border-color: rgba(244,63,94,.4); color: #fff; background: rgba(244,63,94,.1); }
+    .control-label { display: block; margin: 16px 0 8px; color: #64748b; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+    .role-btn { border-radius: 11px; padding: 9px 3px; font-size: 10px; font-weight: 700; }
+    .role-btn.active.cue { color: #020617; border-color: #fff; background: #fff; }
+    .role-btn.active.player { color: #fbbf24; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.1); }
+    .role-btn.active.opponent { color: #c084fc; border-color: rgba(168,85,247,.4); background: rgba(168,85,247,.1); }
+    .strategy { flex: 1; display: flex; flex-direction: column; }
+    select {
+      width: 100%; border: 1px solid #1e293b; border-radius: 11px; padding: 11px 12px;
+      color: #cbd5e1; background: #020617; outline: none; font-size: 12px;
+    }
+    select:focus { border-color: var(--emerald); }
+    .diagnostic {
+      flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 16px;
+      min-height: 230px; border: 1px solid #172033; border-radius: 12px; padding: 16px; background: rgba(2,6,23,.8);
+    }
+    .diagnostic-label { margin-bottom: 8px; color: #475569; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .17em; }
+    #diagnosticFeedback { color: #94a3b8; font-size: 12px; line-height: 1.55; }
+    .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; border-top: 1px solid #172033; padding-top: 12px; }
+    .metric-label { display: block; color: #475569; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+    .metric-value { display: block; margin-top: 3px; color: #fff; font: 700 17px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    #valScratchRisk { font: 700 10px Outfit, sans-serif; text-transform: uppercase; letter-spacing: .06em; }
+    .risk-clear { color: #34d399; } .risk-warn { color: #fb7185; } .risk-blocked { color: #c084fc; } .risk-info { color: #38bdf8; } .risk-neutral { color: #64748b; }
+    .table-panel { position: relative; border-radius: 16px; padding: 10px; overflow: hidden; }
+    .table-tag {
+      position: absolute; z-index: 2; left: 20px; top: 18px; padding: 5px 10px;
+      border: 1px solid rgba(6,78,59,.6); border-radius: 999px; color: #34d399; background: rgba(0,0,0,.7);
+      font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em;
+    }
+    .table-wrap {
+      position: relative; width: 100%; aspect-ratio: 2 / 1; overflow: hidden; border: 14px solid #0b1220;
+      border-radius: 12px; background: #020617; box-shadow: 0 25px 50px -12px rgba(0,0,0,.65);
+    }
+    #poolCanvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+    .secondary-grid { display: grid; grid-template-columns: minmax(210px, 5fr) minmax(0, 7fr); gap: 20px; }
+    .zoom-panel, .legend-panel { min-height: 240px; border-radius: 16px; padding: 20px; }
+    .zoom-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .minor-title { margin: 0; color: #94a3b8; font: 700 12px "Space Grotesk", sans-serif; text-align: center; text-transform: uppercase; letter-spacing: .08em; }
+    .minor-copy { margin: 3px 0 12px; color: #64748b; font-size: 10px; text-align: center; }
+    .zoom-frame { position: relative; width: 160px; height: 160px; overflow: hidden; border: 1px solid #1e293b; border-radius: 50%; background: #020617; box-shadow: 0 20px 36px rgba(0,0,0,.5); }
+    #zoomCanvas { display: block; width: 160px; height: 160px; }
+    .legend-panel { display: flex; flex-direction: column; justify-content: space-between; }
+    .legend-list { display: grid; gap: 11px; color: #94a3b8; font-size: 12px; line-height: 1.35; }
+    .legend-row { display: flex; align-items: center; gap: 10px; }
+    .swatch-line { width: 22px; height: 4px; flex: 0 0 22px; border-radius: 999px; background: #10b981; }
+    .swatch-dash { width: 22px; flex: 0 0 22px; border-top: 1px dashed #38bdf8; }
+    .swatch-dot { width: 12px; height: 12px; flex: 0 0 12px; border: 1px solid #c084fc; border-radius: 50%; background: rgba(168,85,247,.8); }
+    .legend-row strong { color: #e2e8f0; }
+    .footer { border-top: 1px solid #0f172a; padding: 14px 20px; color: #475569; font-size: 10px; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: .16em; }
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .left { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+      .strategy { min-height: 330px; }
+    }
+    @media (max-width: 620px) {
+      .topbar { padding: 11px 14px; }
+      .brand-title { font-size: 19px; }
+      .subtitle { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+      .engine-badge { padding: 3px 6px; font-size: 8px; }
+      .reset-btn { padding: 9px; }
+      .reset-btn span { display: none; }
+      .workspace { gap: 14px; padding: 12px; }
+      .left { display: flex; }
+      .panel { padding: 15px; }
+      .table-panel { padding: 6px; }
+      .table-wrap { border-width: 8px; }
+      .table-tag { top: 11px; left: 12px; font-size: 7px; }
+      .secondary-grid { grid-template-columns: 1fr; gap: 14px; }
+      .zoom-panel, .legend-panel { min-height: 0; padding: 15px; }
+      .legend-panel { gap: 22px; }
+    }
+  </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between antialiased">
-
-    <!-- Header Navigation -->
-    <header class="glass-panel sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-gray-900">
-        <div class="flex items-center space-x-4">
-            <!-- Sleek 3D 8-Ball Logo Unit replacing the broken 'o' -->
-            <div class="relative w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 via-gray-950 to-black shadow-xl flex items-center justify-center border border-gray-800 shrink-0">
-                <div class="absolute top-1.5 left-2 w-2 h-2 bg-white/30 rounded-full blur-[0.5px]"></div>
-                <div class="w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-inner">
-                    <span class="text-black font-sans font-black text-xs select-none">8</span>
-                </div>
-            </div>
-            <div>
-                <h1 class="heading-font text-2xl font-bold tracking-tight text-white flex items-center">
-                    SHOT CALLER
-                    <span class="text-[10px] font-bold tracking-widest px-2.5 py-0.5 ml-3 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 glow-emerald">PRO ENGINE</span>
-
-                </h1>
-                <p class="text-[11px] text-gray-500 font-medium font-sans">BCA Analytics & Precision Tangent Advisor</p>
-            </div>
+<body>
+  <div class="app">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="logo" aria-label="8-ball logo"></div>
+        <div class="brand-copy">
+          <h1 class="heading brand-title">SHOT CALLER <span class="engine-badge">PRO ENGINE</span></h1>
+          <p class="subtitle">BCA Analytics &amp; Precision Tangent Advisor</p>
         </div>
-        <button id="btnReset" class="px-4 py-2 bg-gray-900/80 hover:bg-gray-800 text-gray-300 hover:text-white rounded-xl text-xs font-semibold tracking-wide uppercase transition-all duration-200 shadow-md flex items-center space-x-2 border border-gray-800 hover:border-gray-700">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18"></path></svg>
-            <span>Reset Felt</span>
-        </button>
+      </div>
+      <button id="btnReset" class="reset-btn" type="button" aria-label="Reset felt">
+        <svg class="reset-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4v5h5"/><path d="M20 11a8 8 0 1 0 2 5.3"/></svg>
+        <span>Reset Felt</span>
+      </button>
     </header>
 
-    <!-- Main Workspace Dashboard Grid -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <!-- LEFT PANEL: Dynamic Physics Configuration Controls -->
-        <section class="lg:col-span-4 flex flex-col space-y-5">
-            
-            <!-- Target Asset Assignment State Selection -->
-            <div class="glass-panel p-5 rounded-2xl flex flex-col space-y-4">
-                <h2 class="heading-font text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center space-x-2">
+    <main class="workspace">
+      <section class="left">
+        <div class="panel glass">
+          <h2 class="panel-title">1. Table Setup Controls</h2>
+          <div class="mode-grid">
+            <button id="modePlace" class="mode-btn active" type="button">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+              <span>Place &amp; Move</span>
+            </button>
+            <button id="modeRemove" class="mode-btn" type="button">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+              <span>Remove Ball</span>
+            </button>
+          </div>
+          <label class="control-label">Active Brush / Ball Type:</label>
+          <div class="role-grid">
+            <button class="role-btn active cue" data-role="cue" type="button">Cue Ball</button>
+            <button class="role-btn" data-role="player" type="button">Solid/Stripe</button>
+            <button class="role-btn" data-role="opponent" type="button">Blocker</button>
+          </div>
+        </div>
 
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
-                    <span>1. Table Setup Controls</span>
-                </h2>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <button id="modeSelect" class="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-white font-medium text-xs tracking-wide uppercase transition-all flex flex-col items-center justify-center space-y-1.5 glow-emerald">
-                        <span class="w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white shadow"></span>
-                        <span>Place & Move</span>
-                    </button>
-                    <button id="modeRemove" class="p-3 rounded-xl border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-rose-400 hover:bg-rose-500/5 font-medium text-xs tracking-wide uppercase transition-all flex flex-col items-center justify-center space-y-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-16v4M4 7h16"></path></svg>
-                        <span>Remove Ball</span>
-                    </button>
-                </div>
-
-                <div class="pt-1">
-                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Active Brush / Ball Type:</label>
-                    
-                        <button data-role="cue" class="role-btn py-2 px-1 rounded-xl text-xs font-bold text-center border transition-all bg-white text-black border-white shadow-lg">
-
-                            Cue Ball
-                        </button>
-                        <button data-role="player" class="role-btn py-2 px-1 rounded-xl text-xs font-bold text-center border transition-all bg-gray-900/60 text-amber-500 border-gray-800">
-                            Solid/Stripe
-                        </button>
-                        <button data-role="opponent" class="role-btn py-2 px-1 rounded-xl text-xs font-bold text-center border transition-all bg-gray-900/60 text-purple-400 border-gray-800">
-                            Blocker
-                        </button>
-                    </div>
-                </div>
+        <div class="panel glass strategy">
+          <h2 class="panel-title">2. Advisory Strategy Matrix</h2>
+          <label class="control-label" for="selectShotType">Execution Profile Filter:</label>
+          <select id="selectShotType">
+            <option value="straight">Automated Logical Shot Selector</option>
+            <option value="combo">Forced Combination Analysis</option>
+            <option value="bank">Forced Cushion Bank Modeler</option>
+          </select>
+          <div class="diagnostic">
+            <div>
+              <div class="diagnostic-label">AI Engine Recommendation Status</div>
+              <div id="diagnosticFeedback">Position the Cue Ball and an Object Ball on the table felt grid to begin calculation pipelines.</div>
             </div>
-
-            <!-- Dynamic Tactical Selection / Feedback Realtime Console -->
-            <div class="glass-panel p-5 rounded-2xl flex flex-col space-y-4 flex-1">
-                <h2 class="heading-font text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center space-x-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-[0_0_8px_#38bdf8]"></span>
-                    <span>2. Advisory Strategy Matrix</span>
-                </h2>
-
-
-                <div>
-                    <label for="selectShotType" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Execution Profile Filter:</label>
-                    <select id="selectShotType" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-xs font-medium focus:outline-none focus:border-emerald-500 text-gray-300 transition-all">
-                        <option value="straight">Automated Logical Shot Selector</option>
-                        <option value="combo">Forced Combination Analysis</option>
-                        <option value="bank">Forced Cushion Bank Modeler</option>
-                    </select>
-                </div>
-
-                <!-- Live Dynamic Advisory Messaging Center -->
-                <div class="bg-gray-950/80 rounded-xl p-4 border border-gray-900 flex-1 flex flex-col justify-between space-y-4">
-                    <div>
-                        <div class="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">AI Engine Recommendation Status</div>
-                        <div id="diagnosticFeedback" class="text-xs text-gray-400 font-medium leading-relaxed">
-                            Position the Cue Ball and an Object Ball on the table felt grid to begin calculation pipelines.
-                        </div>
-                    </div>
-
-                    <!-- Precise Numeric Parameter Dashboard -->
-
-                    <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-gray-900 text-xs">
-                        <div>
-                            <span class="text-gray-600 block text-[10px] font-bold uppercase tracking-wider">Optimal Cut:</span>
-                            <span id="valCutAngle" class="font-mono text-white text-base font-bold">0.0°</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-600 block text-[10px] font-bold uppercase tracking-wider">BCA Security Check:</span>
-                            <span id="valScratchRisk" class="font-bold text-emerald-400 text-xs tracking-wide">Clear Path</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="metric-grid">
+              <div><span class="metric-label">Optimal Cut:</span><span id="valCutAngle" class="metric-value">0.0°</span></div>
+              <div><span class="metric-label">BCA Security Check:</span><span id="valScratchRisk" class="risk-clear">Clear Path</span></div>
             </div>
-        </section>
+          </div>
+        </div>
+      </section>
 
-        <!-- CENTER/RIGHT PANEL: Interactive Simulation Canvas + Micro Angle Lens Component -->
-        <section class="lg:col-span-8 flex flex-col space-y-5">
-            
-            <!-- Dynamic Fluid-Responsive Vector Pool Table Container Wrap -->
-            <div class="glass-panel p-2.5 sm:p-3 rounded-2xl flex flex-col items-center justify-center relative w-full overflow-hidden glow-table">
+      <section class="right">
+        <div class="table-panel glass">
+          <div class="table-tag">7FT DIAMOND BOX MATCH MATRIX | SCALE 1:10</div>
+          <div id="canvasWrapper" class="table-wrap">
+            <canvas id="poolCanvas" aria-label="Interactive pool table"></canvas>
+          </div>
+        </div>
 
-                <!-- Dimension Metrics Overlay Tag -->
-                <div class="absolute top-4 left-4 z-10 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-[9px] text-emerald-400 border border-emerald-950/50 font-mono tracking-wide">
-                    7FT DIAMOND BOX MATCH MATRIX | SCALE 1:10
-                </div>
-                
-                <!-- Liquid Table Container Wrapper with Titanium/Dark Wood Finish Rails emulation -->
-                <div id="canvasWrapper" class="w-full border-[8px] sm:border-[16px] border-gradient-to-br from-gray-900 to-gray-950 rounded-xl shadow-2xl bg-gray-950 overflow-hidden relative" style="aspect-ratio: 2/1;">
-                    <!-- Highlighted table inner edge pocket layout canvas -->
-                    <canvas id="poolCanvas" class="pool-table-felt absolute top-0 left-0 w-full h-full block cursor-crosshair"></canvas>
-                </div>
+        <div class="secondary-grid">
+          <div class="zoom-panel glass">
+            <h3 class="minor-title">Precision Vector Impact Sight</h3>
+            <p class="minor-copy">Magnified contact plane for the Primary Choice</p>
+            <div class="zoom-frame"><canvas id="zoomCanvas" width="160" height="160"></canvas></div>
+          </div>
+          <div class="legend-panel glass">
+            <div>
+              <h3 class="minor-title" style="text-align:left;margin-bottom:14px;">Tactical Advisory Legend</h3>
+              <div class="legend-list">
+                <div class="legend-row"><span class="swatch-line"></span><span><strong>Solid Emerald:</strong> Highest Probability Choice (Straightest path line).</span></div>
+                <div class="legend-row"><span class="swatch-dash"></span><span><strong>Dashed Sky Blue:</strong> Valid Secondary Option (Safe alternative target).</span></div>
+                <div class="legend-row"><span class="swatch-dot"></span><span><strong>Blockers:</strong> Threat objects that lower feasibility scores if obstructing path.</span></div>
+              </div>
             </div>
-
-            <!-- ENLARGED IMPACT VIEWPORT LENS -->
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
-                <div class="glass-panel p-5 rounded-2xl md:col-span-5 flex flex-col items-center justify-center">
-                    <div class="text-center mb-3">
-                        <h3 class="heading-font text-xs font-bold text-gray-400 uppercase tracking-wider">Precision Vector Impact Sight</h3>
-                        <p class="text-[10px] text-gray-500 mt-0.5">Magnified contact plane for the Primary Choice</p>
-                    </div>
-
-                    <!-- Magnified Sub-view Canvas Core with polished circular radar scope framing -->
-                    <div class="w-40 h-40 rounded-full border border-gray-800 bg-gray-950 overflow-hidden flex items-center justify-center shadow-2xl relative">
-                        <canvas id="zoomCanvas" width="160" height="160" class="block"></canvas>
-                    </div>
-                </div>
-
-                <!-- Tactical Instructions Guide Sheet Component -->
-                <div class="glass-panel p-5 rounded-2xl md:col-span-7 flex flex-col justify-between">
-                    <div>
-                        <h3 class="heading-font text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Tactical Advisory Legend</h3>
-                        <div class="space-y-2.5 text-xs text-gray-400">
-                            <div class="flex items-center space-x-2.5">
-                                <span class="w-5 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full inline-block shadow-[0_0_6px_#10b981]"></span>
-                                <span><strong class="text-gray-200">Solid Emerald:</strong> Highest Probability Choice (Straightest path line).</span>
-                            </div>
-                            <div class="flex items-center space-x-2.5">
-                                <span class="w-5 h-0.5 border-t border-dashed border-sky-400 inline-block"></span>
-                                <span><strong class="text-gray-200">Dashed Sky Blue:</strong> Valid Secondary Option (Safe alternative target).</span>
-                            </div>
-
-                            <div class="flex items-center space-x-2.5">
-                                <span class="w-3 h-3 rounded-full bg-purple-500/80 inline-block border border-purple-400"></span>
-                                <span><strong class="text-gray-200">Blockers:</strong> Threat objects that lower feasibility scores if obstructing path.</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="pt-3 border-t border-gray-900 flex items-center justify-between text-[10px] text-gray-500 font-mono tracking-wide">
-                        <span>Fluid drag rendering engine scales automatically across device breakpoints</span>
-                    </div>
-                </div>
+            <div style="border-top:1px solid #172033;padding-top:12px;color:#64748b;font-size:10px;">
+              Fluid drag rendering engine scales automatically across device breakpoints
             </div>
-        </section>
-
+          </div>
+        </div>
+      </section>
     </main>
+    <footer class="footer glass">Shot Caller Simulator Engine v2.8 • Premium Edition UI Matrix • Anti-Clash Interaction Architecture</footer>
+  </div>
 
-    <!-- Footer Status Informational Strip -->
-    <footer class="glass-panel border-t border-gray-950 px-6 py-3.5 text-center text-[10px] uppercase font-bold text-gray-600 tracking-widest mt-auto">
-        Shot Caller Simulator Engine v2.8 • Premium Edition UI Matrix • Anti-Clash Interaction Architecture
-    </footer>
-
-
-    <!-- Interactive Simulator Simulation Engine Core Script Logic -->
-    <script>
-        const VIRTUAL_WIDTH = 780;
-        const VIRTUAL_HEIGHT = 390;
-        const BALL_RADIUS = 11.25; 
-        const POCKET_RADIUS = 23.0;
-
-        // Interactive Application State Variables Data
-        let balls = [];
-        let selectedBallIndex = -1;
-        let activeTargetId = null; 
-        let selectedRole = 'cue'; 
-        let selectedActionMode = 'place'; 
-        
-        // Pocket locations mapped with built-in entry facing clearance buffers
-        const pockets = [
-            { id: 0, x: 2, y: 2, targetX: 12, targetY: 12, name: 'Top Left' },
-            { id: 1, x: VIRTUAL_WIDTH / 2, y: -2, targetX: VIRTUAL_WIDTH / 2, targetY: 8, name: 'Top Center' },
-            { id: 2, x: VIRTUAL_WIDTH - 2, y: 2, targetX: VIRTUAL_WIDTH - 12, targetY: 12, name: 'Top Right' },
-
-            { id: 3, x: 2, y: VIRTUAL_HEIGHT - 2, targetX: 12, targetY: VIRTUAL_HEIGHT - 12, name: 'Bottom Left' },
-            { id: 4, x: VIRTUAL_WIDTH / 2, y: VIRTUAL_HEIGHT + 2, targetX: VIRTUAL_WIDTH / 2, targetY: VIRTUAL_HEIGHT - 8, name: 'Bottom Center' },
-            { id: 5, x: VIRTUAL_WIDTH - 2, y: VIRTUAL_HEIGHT - 2, targetX: VIRTUAL_WIDTH - 12, targetY: VIRTUAL_HEIGHT - 12, name: 'Bottom Right' }
-        ];
-
-        // Component Handles
-        const canvas = document.getElementById('poolCanvas');
-        const ctx = canvas.getContext('2d');
-        const canvasWrapper = document.getElementById('canvasWrapper');
-        const zoomCanvas = document.getElementById('zoomCanvas');
-        const zoomCtx = zoomCanvas.getContext('2d');
-
-        // UI Element Selectors
-        const selectShotType = document.getElementById('selectShotType');
-        const diagnosticFeedback = document.getElementById('diagnosticFeedback');
-        const valCutAngle = document.getElementById('valCutAngle');
-        const valScratchRisk = document.getElementById('valScratchRisk');
-        const btnReset = document.getElementById('btnReset');
-        const modeSelect = document.getElementById('modeSelect');
-
-        const modeRemove = document.getElementById('modeRemove');
-        const roleButtons = document.querySelectorAll('.role-btn');
-
-        let currentScale = 1.0;
-
-        function initDefaultSetup() {
-            balls = [
-                { id: 1, x: 195, y: 195, role: 'cue', color: '#ffffff' },
-                { id: 2, x: 540, y: 140, role: 'player', color: '#f59e0b' },
-                { id: 3, x: 620, y: 250, role: 'player', color: '#10b981' },
-                { id: 4, x: 420, y: 220, role: 'opponent', color: '#a855f7' }
-            ];
-            selectedBallIndex = -1;
-            activeTargetId = 2; 
-            calculatePhysicsDiagnostics();
+  <script>
+    "use strict";
+    const VW = 780, VH = 390, BALL_RADIUS = 11.25, POCKET_RADIUS = 23;
+    const canvas = document.getElementById("poolCanvas");
+    const ctx = canvas.getContext("2d");
+    const zoomCanvas = document.getElementById("zoomCanvas");
+    const zoomCtx = zoomCanvas.getContext("2d");
+    const wrapper = document.getElementById("canvasWrapper");
+    const diagnosticFeedback = document.getElementById("diagnosticFeedback");
+    const valCutAngle = document.getElementById("valCutAngle");
+    const valScratchRisk = document.getElementById("valScratchRisk");
+    const selectShotType = document.getElementById("selectShotType");
+    const pockets = [
+      { id: 0, x: 2, y: 2, targetX: 15, targetY: 15, name: "Top Left" },
+      { id: 1, x: VW / 2, y: 0, targetX: VW / 2, targetY: 12, name: "Top Center" },
+      { id: 2, x: VW - 2, y: 2, targetX: VW - 15, targetY: 15, name: "Top Right" },
+      { id: 3, x: 2, y: VH - 2, targetX: 15, targetY: VH - 15, name: "Bottom Left" },
+      { id: 4, x: VW / 2, y: VH, targetX: VW / 2, targetY: VH - 12, name: "Bottom Center" },
+      { id: 5, x: VW - 2, y: VH - 2, targetX: VW - 15, targetY: VH - 15, name: "Bottom Right" }
+    ];
+    let balls = [
+      { id: 1, x: 195, y: 195, role: "cue", color: "#f8fafc" },
+      { id: 2, x: 540, y: 140, role: "player", color: "#f59e0b" },
+      { id: 3, x: 620, y: 250, role: "player", color: "#10b981" },
+      { id: 4, x: 420, y: 220, role: "opponent", color: "#a855f7" }
+    ];
+    let selectedRole = "cue", actionMode = "place", activeTargetId = 2, selectedBallIndex = -1, lastShot = null;
+    let cssWidth = 1, cssHeight = 1;
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+    const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    function lineDistance(a, b, p) {
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+      return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    }
+    function unit(x, y) {
+      const len = Math.hypot(x, y) || 1;
+      return { x: x / len, y: y / len };
+    }
+    function shotFor(cue, target, pocket) {
+      const objectToPocket = unit(pocket.targetX - target.x, pocket.targetY - target.y);
+      const ghost = { x: target.x - objectToPocket.x * BALL_RADIUS * 2, y: target.y - objectToPocket.y * BALL_RADIUS * 2 };
+      const cueToGhost = unit(ghost.x - cue.x, ghost.y - cue.y);
+      const dot = clamp(cueToGhost.x * objectToPocket.x + cueToGhost.y * objectToPocket.y, -1, 1);
+      const cut = 90 - Math.acos(dot) * 180 / Math.PI;
+      const cutSign = cueToGhost.x * objectToPocket.y - cueToGhost.y * objectToPocket.x < 0 ? -1 : 1;
+      const tangent = { x: -objectToPocket.y * cutSign, y: objectToPocket.x * cutSign };
+      const rollAmount = .18;
+      const outgoing = unit(tangent.x * (1 - rollAmount) + objectToPocket.x * rollAmount, tangent.y * (1 - rollAmount) + objectToPocket.y * rollAmount);
+      const scratch = pockets.some((p) => {
+        const pocketVector = { x: p.x - target.x, y: p.y - target.y };
+        const along = pocketVector.x * outgoing.x + pocketVector.y * outgoing.y;
+        const cross = Math.abs(pocketVector.x * outgoing.y - pocketVector.y * outgoing.x);
+        return along > 18 && along < 330 && cross < POCKET_RADIUS * 1.35;
+      });
+      const blocked = balls.some((b) => b.id !== cue.id && b.id !== target.id && b.role === "opponent" && lineDistance(cue, ghost, b) < BALL_RADIUS * 1.9 && ((b.x - cue.x) * (ghost.x - cue.x) + (b.y - cue.y) * (ghost.y - cue.y)) > 0);
+      const illegalFirstContact = balls.some((b) => b.id !== cue.id && b.id !== target.id && b.role === "opponent" && lineDistance(cue, ghost, b) < BALL_RADIUS * 1.9);
+      const cueTravel = distance(cue, ghost), objectTravel = distance(target, { x: pocket.targetX, y: pocket.targetY });
+      const pocketDifficulty = Math.abs(cut) * 1.18 + objectTravel * .025;
+      const score = clamp(100 - pocketDifficulty - cueTravel * .018 - (scratch ? 43 : 0) - (blocked ? 35 : 0) - (illegalFirstContact ? 45 : 0), 0, 100);
+      return { target, pocket, ghost, cueToGhost, objectToPocket, outgoing, cut, scratch, blocked, illegalFirstContact, score };
+    }
+    function drawSphere(context, x, y, radius, color, target, ghost) {
+      context.save();
+      context.shadowColor = "rgba(0,0,0,.55)"; context.shadowBlur = radius * .7; context.shadowOffsetY = radius * .18;
+      context.beginPath(); context.arc(x, y, radius, 0, Math.PI * 2);
+      if (ghost) {
+        context.shadowColor = "transparent"; context.setLineDash([4, 3]); context.strokeStyle = color; context.lineWidth = 2; context.stroke(); context.restore(); return;
+      }
+      const gradient = context.createRadialGradient(x - radius * .32, y - radius * .35, 1, x, y, radius);
+      if (color === "#f8fafc") {
+        gradient.addColorStop(0, "#fff"); gradient.addColorStop(.55, "#e2e8f0"); gradient.addColorStop(1, "#94a3b8");
+      } else if (color === "#f59e0b") {
+        gradient.addColorStop(0, "#fef08a"); gradient.addColorStop(.3, "#f59e0b"); gradient.addColorStop(1, "#78350f");
+      } else if (color === "#10b981") {
+        gradient.addColorStop(0, "#a7f3d0"); gradient.addColorStop(.3, "#10b981"); gradient.addColorStop(1, "#064e3b");
+      } else {
+        gradient.addColorStop(0, "#f3e8ff"); gradient.addColorStop(.3, color); gradient.addColorStop(1, "#4a044e");
+      }
+      context.fillStyle = gradient; context.fill(); context.strokeStyle = target ? "#fbbf24" : "rgba(0,0,0,.55)"; context.lineWidth = target ? 2.4 : .8; context.stroke(); context.restore();
+    }
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      cssWidth = Math.max(1, rect.width); cssHeight = Math.max(1, rect.height);
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(cssWidth * dpr)); canvas.height = Math.max(1, Math.round(cssHeight * dpr));
+      render();
+    }
+    function pointFromEvent(event) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: clamp((event.clientX - rect.left) / rect.width * VW, 0, VW), y: clamp((event.clientY - rect.top) / rect.height * VH, 0, VH) };
+    }
+    function renderZoom(shot) {
+      zoomCtx.clearRect(0, 0, 160, 160); zoomCtx.fillStyle = "#060814"; zoomCtx.fillRect(0, 0, 160, 160);
+      zoomCtx.strokeStyle = "#1f2937"; zoomCtx.lineWidth = 1; zoomCtx.strokeRect(0, 0, 160, 160);
+      if (!shot) { zoomCtx.fillStyle = "#64748b"; zoomCtx.font = "10px monospace"; zoomCtx.textAlign = "center"; zoomCtx.fillText("Awaiting Setup", 80, 83); return; }
+      const center = { x: 80, y: 80 }, angle = Math.atan2(shot.ghost.y - shot.target.y, shot.ghost.x - shot.target.x);
+      const ghost = { x: center.x + Math.cos(angle) * 52, y: center.y + Math.sin(angle) * 52 };
+      drawSphere(zoomCtx, center.x, center.y, 28, shot.target.color, true, false);
+      drawSphere(zoomCtx, ghost.x, ghost.y, 28, "rgba(255,255,255,.8)", false, true);
+      zoomCtx.beginPath(); zoomCtx.moveTo(ghost.x + Math.cos(angle) * 30, ghost.y + Math.sin(angle) * 30); zoomCtx.lineTo(center.x, center.y);
+      zoomCtx.strokeStyle = "#10b981"; zoomCtx.lineWidth = 2; zoomCtx.stroke();
+      zoomCtx.beginPath(); zoomCtx.arc(center.x - Math.cos(angle) * 25, center.y - Math.sin(angle) * 25, 3.5, 0, Math.PI * 2); zoomCtx.fillStyle = "#ef4444"; zoomCtx.fill();
+    }
+    function render() {
+      if (!ctx || !cssWidth || !cssHeight) return;
+      const dpr = window.devicePixelRatio || 1;
+      ctx.setTransform(dpr * cssWidth / VW, 0, 0, dpr * cssHeight / VH, 0, 0);
+      ctx.clearRect(0, 0, VW, VH);
+      const felt = ctx.createRadialGradient(VW / 2, VH / 2, 20, VW / 2, VH / 2, VW / 1.1);
+      felt.addColorStop(0, "#087a51"); felt.addColorStop(1, "#00281c"); ctx.fillStyle = felt; ctx.fillRect(0, 0, VW, VH);
+      ctx.strokeStyle = "rgba(173,255,215,.23)"; ctx.lineWidth = 3; ctx.strokeRect(9, 9, VW - 18, VH - 18);
+      pockets.forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, POCKET_RADIUS, 0, Math.PI * 2); ctx.fillStyle = "#070b12"; ctx.fill(); ctx.strokeStyle = "#263447"; ctx.lineWidth = 3; ctx.stroke(); });
+      const cue = balls.find((b) => b.role === "cue"), players = balls.filter((b) => b.role === "player");
+      const explicitTarget = balls.find((b) => b.id === activeTargetId && b.role === "player");
+      let target = explicitTarget || players[0], shot = null;
+      const profile = selectShotType.value;
+      if (cue && target) {
+        if (profile === "straight") {
+          const candidates = players.flatMap((player) => pockets.map((pocket) => shotFor(cue, player, pocket))).sort((a, b) => b.score - a.score);
+          shot = candidates.find((candidate) => candidate.target.id === target.id) || candidates[0] || null;
+        } else if (profile === "combo") {
+          shot = shotFor(cue, target, pockets[4]);
+        } else {
+          shot = shotFor(cue, target, pockets[1]);
         }
-
-        function resizeCanvas() {
-            const wrapperWidth = canvasWrapper.clientWidth;
-
-            canvas.width = wrapperWidth;
-            canvas.height = wrapperWidth / 2;
-            currentScale = wrapperWidth / VIRTUAL_WIDTH;
-            calculatePhysicsDiagnostics();
+      }
+      lastShot = shot;
+      if (!cue || !target) {
+        diagnosticFeedback.textContent = "Setup incomplete. Ensure one Cue Ball and at least one Colored Ball exist to map shot lines.";
+        valCutAngle.textContent = "0.0°"; valScratchRisk.textContent = "No Path"; valScratchRisk.className = "risk-neutral";
+      } else if (shot) {
+        if (profile === "straight") {
+          const alternatives = players.flatMap((player) => pockets.map((pocket) => shotFor(cue, player, pocket))).sort((a, b) => b.score - a.score).filter((candidate) => candidate.target.id !== shot.target.id);
+          const secondary = alternatives[0];
+          if (secondary && secondary.score > 15) {
+            ctx.beginPath(); ctx.setLineDash([5, 5]); ctx.moveTo(secondary.target.x, secondary.target.y); ctx.lineTo(secondary.pocket.x, secondary.pocket.y); ctx.strokeStyle = "rgba(56,189,248,.7)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+          }
         }
-
-        function distance(x1, y1, x2, y2) {
-            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        }
-
-        function rankLogicalPocketsForBall(cueBall, targetBall) {
-            let options = [];
-
-            pockets.forEach(pocket => {
-                let dxObj = pocket.targetX - targetBall.x;
-                let dyObj = pocket.targetY - targetBall.y;
-                let lenObj = Math.sqrt(dxObj * dxObj + dyObj * dyObj);
-                
-                if (lenObj === 0) return;
-
-                
-                let uxObj = dxObj / lenObj;
-                let uyObj = dyObj / lenObj;
-
-                let ghostX = targetBall.x - uxObj * (BALL_RADIUS * 2);
-                let ghostY = targetBall.y - uyObj * (BALL_RADIUS * 2);
-
-                let dxCue = ghostX - cueBall.x;
-                let dyCue = ghostY - cueBall.y;
-                let lenCue = Math.sqrt(dxCue * dxCue + dyCue * dyCue);
-                
-                let cutAngleDeg = 0;
-                let cutSign = 1;
-                
-                if (lenCue > 0 && lenObj > 0) {
-                    let dot = (dxCue * dxObj + dyCue * dyObj) / (lenCue * lenObj);
-                    dot = Math.max(-1, Math.min(1, dot));
-                    let angleRad = Math.acos(dot);
-                    cutAngleDeg = 90 - (angleRad * 180) / Math.PI;
-
-
-                    let crossProduct = dxCue * dyObj - dyCue * dxObj;
-                    if (crossProduct < 0) cutSign = -1;
-                }
-
-                let absCut = Math.abs(cutAngleDeg);
-
-                // Scratch verification checking for natural slide hazards
-                let defX = -uyAim(ghostX, cueBall.x, lenCue) * cutSign;
-                let defY = uxAim(ghostX, cueBall.x, lenCue) * cutSign;
-                let isScratch = false;
-
-                pockets.forEach(p => {
-                    let vX = p.x - ghostX;
-                    let vY = p.y - ghostY;
-                    let dot = vX * defX + vY * defY;
-                    if (dot > 0) {
-                        let projX = ghostX + defX * dot;
-                        let projY = ghostY + defY * dot;
-                        if (distance(projX, projY, p.x, p.y) < POCKET_RADIUS * 1.5 && dot < 300) {
-
-                            isScratch = true;
-                        }
-                    }
-                });
-
-                // Blocker line-of-sight obstruction trace check
-                let isObstructed = false;
-                balls.forEach(b => {
-                    if (b.id !== cueBall.id && b.id !== targetBall.id) {
-                        let distToLine = ptLineDistance(cueBall.x, cueBall.y, ghostX, ghostY, b.x, b.y);
-                        if (distToLine < BALL_RADIUS * 2.0) {
-                            let dotPath = (b.x - cueBall.x)*(ghostX - cueBall.x) + (b.y - cueBall.y)*(ghostY - cueBall.y);
-                            if (dotPath > 0 && dotPath < lenCue * lenCue) {
-                                isObstructed = true;
-                            }
-                        }
-                    }
-                });
-
-
-                let feasibilityScore = 100 - (absCut * 1.4) - (lenObj * 0.05);
-                if (absCut > 80 || absCut < -80) feasibilityScore = 0; 
-                if (isScratch) feasibilityScore -= 45; 
-                if (isObstructed) feasibilityScore -= 60; 
-
-                options.push({
-                    pocket: pocket,
-                    cutAngle: cutAngleDeg,
-                    cutSign: cutSign,
-                    score: feasibilityScore,
-                    ghostX: ghostX,
-                    ghostY: ghostY,
-                    isScratch: isScratch,
-                    isObstructed: isObstructed
-                });
-            });
-
-            return options.sort((a, b) => b.score - a.score);
-        }
-
-
-        function uxAim(gx, cx, len) { return (gx - cx) / (len || 1); }
-        function uyAim(gy, cy, len) { return (gy - cy) / (len || 1); }
-
-        function ptLineDistance(x1, y1, x2, y2, px, py) {
-            let dx = x2 - x1;
-            let dy = y2 - y1;
-            if (dx === 0 && dy === 0) return distance(x1, y1, px, py);
-            let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
-            t = Math.max(0, Math.min(1, t));
-            return distance(px, py, x1 + t * dx, y1 + t * dy);
-        }
-
-        function drawPremiumPoolSphere(x, y, radius, color, isGhost, isTargetHighlight) {
-            // Draw realistic offset cast floor shadow under spheres
-            ctx.beginPath();
-            ctx.ellipse(x, y + (radius * 0.15), radius, radius * 0.6, 0, 0, Math.PI * 2);
-            ctx.fillStyle = isGhost ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.45)';
-            ctx.fill();
-
-
-            if (isGhost) {
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.strokeStyle = color;
-                ctx.lineWidth = Math.max(1, 1.8 * currentScale);
-                ctx.setLineDash([4, 3]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                return;
-            }
-
-            // High fidelity spherical 3D shading
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            let sphereGrad = ctx.createRadialGradient(
-                x - radius * 0.3, y - radius * 0.3, radius * 0.1,
-                x, y, radius
-            );
-            
-
-            if (color === '#ffffff') {
-                sphereGrad.addColorStop(0, '#ffffff');
-                sphereGrad.addColorStop(0.6, '#e2e8f0');
-                sphereGrad.addColorStop(1, '#94a3b8');
-            } else if (color === '#f59e0b') { // Solid Amber 
-                sphereGrad.addColorStop(0, '#fef08a');
-                sphereGrad.addColorStop(0.3, '#f59e0b');
-                sphereGrad.addColorStop(1, '#78350f');
-            } else if (color === '#10b981') { // Secondary solid
-                sphereGrad.addColorStop(0, '#a7f3d0');
-                sphereGrad.addColorStop(0.3, '#10b981');
-                sphereGrad.addColorStop(1, '#064e3b');
-            } else if (color === '#a855f7') { // Blocker Purple
-                sphereGrad.addColorStop(0, '#f3e8ff');
-                sphereGrad.addColorStop(0.3, '#a855f7');
-                sphereGrad.addColorStop(1, '#4a044e');
-            } else {
-                sphereGrad.addColorStop(0, '#ffffff');
-                sphereGrad.addColorStop(1, color);
-
-            }
-            
-            ctx.fillStyle = sphereGrad;
-            ctx.fill();
-
-            // Distinct sharp alignment border ring overlay
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.strokeStyle = isTargetHighlight ? '#fbbf24' : 'rgba(0,0,0,0.4)';
-            ctx.lineWidth = isTargetHighlight ? Math.max(1.5, 3 * currentScale) : 0.7;
-            ctx.stroke();
-        }
-
-        function calculatePhysicsDiagnostics() {
-            if (!ctx) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw Target Cushioned Rail Pockets
-            pockets.forEach(p => {
-
-                ctx.beginPath();
-                ctx.arc(p.x * currentScale, p.y * currentScale, POCKET_RADIUS * currentScale, 0, Math.PI * 2);
-                ctx.fillStyle = '#090b11';
-                ctx.fill();
-                ctx.lineWidth = Math.max(1, 2.5 * currentScale);
-                ctx.strokeStyle = '#1e293b';
-                ctx.stroke();
-            });
-
-            let cueBall = balls.find(b => b.role === 'cue');
-            let playerBalls = balls.filter(b => b.role === 'player');
-            let shotType = selectShotType.value;
-
-            let targetObjBall = balls.find(b => b.id === activeTargetId);
-            if (!targetObjBall || targetObjBall.role === 'cue') {
-                targetObjBall = playerBalls[0];
-                if (targetObjBall) activeTargetId = targetObjBall.id;
-            }
-
-
-            // Draw premium shaded billiard balls
-            balls.forEach((ball, idx) => {
-                let isTargetHighlight = (ball.id === activeTargetId && ball.role !== 'cue');
-                drawPremiumPoolSphere(ball.x * currentScale, ball.y * currentScale, BALL_RADIUS * currentScale, ball.color, false, isTargetHighlight);
-            });
-
-            if (!cueBall || playerBalls.length === 0 || !targetObjBall) {
-                diagnosticFeedback.innerHTML = "Setup incomplete. Ensure one Cue Ball and at least one Colored Ball exist to map shot lines.";
-                valCutAngle.innerText = "0.0°";
-                valScratchRisk.innerText = "No Path";
-                valScratchRisk.className = "font-bold text-gray-500 text-sm";
-                drawZoomView(null, null, null, 0);
-                return;
-            }
-
-            if (shotType === 'straight') {
-                let rankedShots = rankLogicalPocketsForBall(cueBall, targetObjBall);
-                let primaryBest = rankedShots[0];
-                let secondaryAlternative = rankedShots[1];
-
-
-                // 1. Draw Secondary Alternative Choice (Dashed Sky Blue Layout Vector)
-                if (secondaryAlternative && secondaryAlternative.score > 15) {
-                    drawCoreGuideLines(cueBall, targetObjBall, secondaryAlternative.ghostX, secondaryAlternative.ghostY, secondaryAlternative.pocket, '#38bdf8', true);
-                    drawPremiumPoolSphere(secondaryAlternative.ghostX * currentScale, secondaryAlternative.ghostY * currentScale, BALL_RADIUS * currentScale, 'rgba(56, 189, 248, 0.4)', true, false);
-                }
-
-                // 2. Draw Primary Best Choice (Solid Neon Emerald Layout Vector)
-                drawCoreGuideLines(cueBall, targetObjBall, primaryBest.ghostX, primaryBest.ghostY, primaryBest.pocket, '#10b981', false);
-                drawPremiumPoolSphere(primaryBest.ghostX * currentScale, primaryBest.ghostY * currentScale, BALL_RADIUS * currentScale, 'rgba(255, 255, 255, 0.75)', true, false);
-
-                valCutAngle.innerText = Math.abs(primaryBest.cutAngle).toFixed(1) + "°";
-                
-                let statusStr = "Ideal Choice";
-                let statusClass = "text-emerald-400 font-bold text-xs tracking-wider uppercase";
-                if (primaryBest.isObstructed) {
-                    statusStr = "Foul Risk Blocked";
-                    statusClass = "text-purple-400 font-bold text-xs tracking-wider uppercase";
-                } else if (primaryBest.isScratch) {
-                    statusStr = "Scratch Threat Danger";
-
-                    statusClass = "text-rose-500 font-bold text-xs tracking-wider uppercase";
-                } else if (Math.abs(primaryBest.cutAngle) > 45) {
-                    statusStr = "Difficult Thin Cut";
-                    statusClass = "text-amber-400 font-bold text-xs tracking-wider uppercase";
-                }
-
-                valScratchRisk.innerText = statusStr;
-                valScratchRisk.className = statusClass;
-
-                diagnosticFeedback.innerHTML = `<strong>Best Logical Target:</strong> Cut into the <span class="text-white font-semibold">${primaryBest.pocket.name} Pocket</span> (Score: ${Math.round(primaryBest.score)}/100).<br>
-                ${primaryBest.isObstructed ? "<span class='text-purple-400 font-medium'>⚠️ Blocker obstruction flagged on entry.</span>" : "Line of target strike is completely wide open."} 
-                ${primaryBest.isScratch ? "<span class='text-rose-400 font-medium'>⚠️ Scratch warning on natural deflection tracks.</span>" : ""}`;
-
-                drawZoomView(cueBall, targetObjBall, {x: primaryBest.ghostX, y: primaryBest.ghostY}, primaryBest.cutAngle);
-
-            } else if (shotType === 'combo') {
-                processComboShot(cueBall, playerBalls, targetObjBall);
-            } else if (shotType === 'bank') {
-                processBankShot(cueBall, targetObjBall);
-
-            }
-        }
-
-        function processComboShot(cueBall, playerBalls, targetedBall) {
-            let secondaryBall = playerBalls.find(b => b.id !== targetedBall.id);
-            if (!secondaryBall) {
-                diagnosticFeedback.innerHTML = "BCA Rules Combo shots require at least 2 target balls in play to sequence path lines.";
-                return;
-            }
-
-            let pocket = getOptimalTargetPocket(secondaryBall.x, secondaryBall.y);
-
-            let dx2 = pocket.targetX - secondaryBall.x;
-            let dy2 = pocket.targetY - secondaryBall.y;
-            let len2 = Math.sqrt(dx2*dx2 + dy2*dy2);
-            let ux2 = dx2 / (len2 || 1);
-            let uy2 = dy2 / (len2 || 1);
-
-            let ghost2X = secondaryBall.x - ux2 * (BALL_RADIUS * 2);
-
-            let ghost2Y = secondaryBall.y - uy2 * (BALL_RADIUS * 2);
-
-            let dx1 = ghost2X - targetedBall.x;
-            let dy1 = ghost2Y - targetedBall.y;
-            let len1 = Math.sqrt(dx1*dx1 + dy1*dy1);
-            let ux1 = dx1 / (len1 || 1);
-            let uy1 = dy1 / (len1 || 1);
-
-            let ghost1X = targetedBall.x - ux1 * (BALL_RADIUS * 2);
-            let ghost1Y = targetedBall.y - uy1 * (BALL_RADIUS * 2);
-
-            ctx.beginPath();
-            ctx.setLineDash([Math.max(1, 4 * currentScale), Math.max(1, 4 * currentScale)]);
-            ctx.moveTo(pocket.x * currentScale, pocket.y * currentScale);
-            ctx.lineTo(secondaryBall.x * currentScale, secondaryBall.y * currentScale);
-            ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = Math.max(1, 1.5 * currentScale);
-            ctx.stroke();
-
-
-            ctx.beginPath();
-            ctx.moveTo(secondaryBall.x * currentScale, secondaryBall.y * currentScale);
-            ctx.lineTo(targetedBall.x * currentScale, targetedBall.y * currentScale);
-            ctx.strokeStyle = '#ef4444';
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(cueBall.x * currentScale, cueBall.y * currentScale);
-            ctx.lineTo(ghost1X * currentScale, ghost1Y * currentScale);
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            drawPremiumPoolSphere(ghost1X * currentScale, ghost1Y * currentScale, BALL_RADIUS * currentScale, 'rgba(255,255,255,0.7)', true, false);
-
-            diagnosticFeedback.innerHTML = "<strong>BCA Combo Tracker:</strong> Straight-line simulation. Ensure striking the highlighted ball first to make shot legal.";
-            valCutAngle.innerText = "Combo Chain";
-            valScratchRisk.innerText = "Complex Matrix";
-            valScratchRisk.className = "text-amber-400 font-bold text-xs tracking-wider uppercase";
-
-
-            drawZoomView(cueBall, targetedBall, {x: ghost1X, y: ghost1Y}, 15);
-        }
-
-        function processBankShot(cueBall, targetBall) {
-            let pocket = getOptimalTargetPocket(VIRTUAL_WIDTH - targetBall.x, targetBall.y);
-            
-            let mirroredY = -targetBall.y; 
-            let dx = pocket.targetX - targetBall.x;
-            let dy = pocket.targetY - mirroredY;
-            
-            let pct = Math.abs(mirroredY) / (Math.abs(mirroredY) + pocket.targetY);
-            let railIntersectionX = targetBall.x + dx * pct;
-            let railIntersectionY = 0; 
-
-            let dxObj = targetBall.x - railIntersectionX;
-            let dyObj = targetBall.y - railIntersectionY;
-            let lenObj = Math.sqrt(dxObj*dxObj + dyObj*dyObj);
-            
-            let ghostX = targetBall.x + (dxObj / (lenObj || 1)) * (BALL_RADIUS * 2);
-
-            let ghostY = targetBall.y + (dyObj / (lenObj || 1)) * (BALL_RADIUS * 2);
-
-            ctx.beginPath();
-            ctx.setLineDash([Math.max(1, 3 * currentScale), Math.max(1, 3 * currentScale)]);
-            ctx.moveTo(pocket.x * currentScale, pocket.y * currentScale);
-            ctx.lineTo(railIntersectionX * currentScale, railIntersectionY * currentScale);
-            ctx.lineTo(targetBall.x * currentScale, targetBall.y * currentScale);
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = Math.max(1, 1.5 * currentScale);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(cueBall.x * currentScale, cueBall.y * currentScale);
-            ctx.lineTo(ghostX * currentScale, ghostY * currentScale);
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            drawPremiumPoolSphere(ghostX * currentScale, ghostY * currentScale, BALL_RADIUS * currentScale, 'rgba(56,189,248,0.7)', true, false);
-
-
-            diagnosticFeedback.innerHTML = "Bank shot alignment mapped across top bar box rail cushions. Ensure controlled velocity to manage soft-cushion compression deflections.";
-            valCutAngle.innerText = "Bank Angle";
-            valScratchRisk.innerText = "Check Rail Friction";
-            valScratchRisk.className = "text-sky-400 font-bold text-xs tracking-wider uppercase";
-
-            drawZoomView(cueBall, targetBall, {x: ghostX, y: ghostY}, 30);
-        }
-
-        function drawCoreGuideLines(cueBall, targetBall, ghostX, ghostY, pocket, accentColor, isDashed) {
-            ctx.beginPath();
-            ctx.moveTo(cueBall.x * currentScale, cueBall.y * currentScale);
-            ctx.lineTo(ghostX * currentScale, ghostY * currentScale);
-            ctx.strokeStyle = isDashed ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.45)';
-            ctx.lineWidth = isDashed ? Math.max(0.5, 1 * currentScale) : Math.max(1, 1.5 * currentScale);
-            if (isDashed) ctx.setLineDash([Math.max(1, 2 * currentScale), Math.max(1, 3 * currentScale)]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            ctx.beginPath();
-
-            ctx.moveTo(targetBall.x * currentScale, targetBall.y * currentScale);
-            ctx.lineTo(pocket.x * currentScale, pocket.y * currentScale);
-            ctx.strokeStyle = accentColor;
-            ctx.lineWidth = isDashed ? Math.max(1, 1.5 * currentScale) : Math.max(1.5, 2.5 * currentScale);
-            if (isDashed) ctx.setLineDash([Math.max(1, 3 * currentScale), Math.max(1, 3 * currentScale)]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-
-        function drawZoomView(cueBall, targetBall, ghostBall, cutAngle) {
-            zoomCtx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
-            zoomCtx.fillStyle = '#060814';
-            zoomCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
-            
-            let cx = zoomCanvas.width / 2;
-            let cy = zoomCanvas.height / 2;
-
-            zoomCtx.beginPath();
-            zoomCtx.strokeStyle = '#111827';
-
-            zoomCtx.lineWidth = 1;
-            zoomCtx.moveTo(0, cy); zoomCtx.lineTo(zoomCanvas.width, cy);
-            zoomCtx.moveTo(cx, 0); zoomCtx.lineTo(cx, zoomCanvas.height);
-            zoomCtx.stroke();
-
-            if (!cueBall || !targetBall || !ghostBall) {
-                zoomCtx.fillStyle = '#4b5563';
-                zoomCtx.font = '10px monospace';
-                zoomCtx.textAlign = 'center';
-                zoomCtx.fillText("Awaiting Setup", cx, cy);
-                return;
-            }
-
-            let displayRadius = 26;
-
-            // Draw object ball shadow inside scope
-            zoomCtx.beginPath();
-            zoomCtx.ellipse(cx, cy + (displayRadius * 0.15), displayRadius, displayRadius * 0.6, 0, 0, Math.PI * 2);
-            zoomCtx.fillStyle = 'rgba(0,0,0,0.5)';
-
-            zoomCtx.fill();
-
-            // Draw shaded target object ball sphere inside scope
-            zoomCtx.beginPath();
-            zoomCtx.arc(cx, cy, displayRadius, 0, Math.PI * 2);
-            let objGrad = zoomCtx.createRadialGradient(cx - displayRadius*0.3, cy - displayRadius*0.3, displayRadius*0.1, cx, cy, displayRadius);
-            if (targetBall.color === '#f59e0b') {
-                objGrad.addColorStop(0, '#fef08a');
-                objGrad.addColorStop(0.3, '#f59e0b');
-                objGrad.addColorStop(1, '#78350f');
-            } else {
-                objGrad.addColorStop(0, '#a7f3d0');
-                objGrad.addColorStop(0.3, '#10b981');
-                objGrad.addColorStop(1, '#064e3b');
-            }
-            zoomCtx.fillStyle = objGrad;
-            zoomCtx.fill();
-
-            let dx = ghostBall.x - targetBall.x;
-
-            let dy = ghostBall.y - targetBall.y;
-            let len = Math.sqrt(dx*dx + dy*dy);
-            
-            let nDx = dx / (len || 1);
-            let nDy = dy / (len || 1);
-
-            let gcx = cx + nDx * (displayRadius * 2);
-            let gcy = cy + nDy * (displayRadius * 2);
-
-            // Ghost ball outline loop
-            zoomCtx.beginPath();
-            zoomCtx.arc(gcx, gcy, displayRadius, 0, Math.PI * 2);
-            zoomCtx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-            zoomCtx.lineWidth = 2;
-            zoomCtx.setLineDash([3, 2]);
-            zoomCtx.stroke();
-            zoomCtx.setLineDash([]);
-
-            // Trajectory path pointer
-
-            zoomCtx.beginPath();
-            zoomCtx.moveTo(gcx + nDx * 30, gcy + nDy * 30);
-            zoomCtx.lineTo(cx, cy);
-            zoomCtx.strokeStyle = '#10b981';
-            zoomCtx.lineWidth = 2;
-            zoomCtx.stroke();
-
-            // Contact point pinpoint marker dot
-            zoomCtx.beginPath();
-            zoomCtx.arc(cx + nDx * displayRadius, cy + nDy * displayRadius, 3.5, 0, Math.PI * 2);
-            zoomCtx.fillStyle = '#ef4444';
-            zoomCtx.fill();
-        }
-
-        function getCanvasMouseCoords(e) {
-            const rect = canvas.getBoundingClientRect();
-            return {
-                x: ((e.clientX - rect.left) / rect.width) * VIRTUAL_WIDTH,
-                y: ((e.clientY - rect.top) / rect.height) * VIRTUAL_HEIGHT
-
-            };
-        }
-
-        function handleCanvasInteraction(clientX, clientY) {
-            let coords = getCanvasMouseCoords({ clientX, clientY });
-            
-            if (selectedActionMode === 'remove') {
-                balls = balls.filter(b => distance(coords.x, coords.y, b.x, b.y) > BALL_RADIUS * 1.5);
-                selectedBallIndex = -1;
-                calculatePhysicsDiagnostics();
-                return;
-            }
-
-            let foundIdx = balls.findIndex(b => distance(coords.x, coords.y, b.x, b.y) < BALL_RADIUS * 1.8);
-
-            if (foundIdx !== -1) {
-                selectedBallIndex = foundIdx;
-                if (balls[foundIdx].role !== 'cue') {
-                    activeTargetId = balls[foundIdx].id;
-
-                }
-            } else {
-                let newColor = '#ffffff';
-                if (selectedRole === 'player') newColor = '#f59e0b';
-                if (selectedRole === 'opponent') newColor = '#a855f7';
-
-                if (selectedRole === 'cue') {
-                    balls = balls.filter(b => b.role !== 'cue');
-                }
-
-                let newBall = {
-                    id: Date.now(),
-                    x: Math.max(BALL_RADIUS, Math.min(VIRTUAL_WIDTH - BALL_RADIUS, coords.x)),
-                    y: Math.max(BALL_RADIUS, Math.min(VIRTUAL_HEIGHT - BALL_RADIUS, coords.y)),
-                    role: selectedRole,
-                    color: newColor
-                };
-                
-                balls.push(newBall);
-
-                selectedBallIndex = balls.length - 1;
-                if (newBall.role !== 'cue') activeTargetId = newBall.id;
-            }
-            calculatePhysicsDiagnostics();
-        }
-
-        function handleCanvasDrag(clientX, clientY) {
-            if (selectedBallIndex === -1 || selectedActionMode === 'remove') return;
-            let coords = getCanvasMouseCoords({ clientX, clientY });
-            
-            balls[selectedBallIndex].x = Math.max(BALL_RADIUS, Math.min(VIRTUAL_WIDTH - BALL_RADIUS, coords.x));
-            balls[selectedBallIndex].y = Math.max(BALL_RADIUS, Math.min(VIRTUAL_HEIGHT - BALL_RADIUS, coords.y));
-            
-            calculatePhysicsDiagnostics();
-        }
-
-        canvas.addEventListener('mousedown', (e) => {
-            handleCanvasInteraction(e.clientX, e.clientY);
-            canvas.addEventListener('mousemove', onMouseMoveDrag);
-
-        });
-
-        function onMouseMoveDrag(e) {
-            handleCanvasDrag(e.clientX, e.clientY);
-        }
-
-        window.addEventListener('mouseup', () => {
-            canvas.removeEventListener('mousemove', onMouseMoveDrag);
-        });
-
-        canvas.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 0) return;
-            handleCanvasInteraction(e.touches[0].clientX, e.touches[0].clientY);
-            canvas.addEventListener('touchmove', onTouchMoveDrag);
-        });
-
-        function onTouchMoveDrag(e) {
-            if (e.touches.length === 0) return;
-            e.preventDefault();
-
-            handleCanvasDrag(e.touches[0].clientX, e.touches[0].clientY);
-        }
-
-        canvas.addEventListener('touchend', () => {
-            canvas.removeEventListener('touchmove', onTouchMoveDrag);
-        });
-
-        window.addEventListener('resize', resizeCanvas);
-        selectShotType.addEventListener('change', calculatePhysicsDiagnostics);
-        btnReset.addEventListener('click', initDefaultSetup);
-
-        modeSelect.addEventListener('click', () => {
-            selectedActionMode = 'place';
-            modeSelect.className = "p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-white font-medium text-xs tracking-wide uppercase transition-all flex flex-col items-center justify-center space-y-1.5 glow-emerald";
-            modeRemove.className = "p-3 rounded-xl border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-rose-400 hover:bg-rose-500/5 font-medium text-xs tracking-wide uppercase transition-all flex flex-col items-center justify-center space-y-1.5";
-        });
-
-        modeRemove.addEventListener('click', () => {
-            selectedActionMode = 'remove';
-
-            modeRemove.className = "p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-white font-medium text-xs tracking-wide uppercase transition-all flex flex-col items-center justify-center space-y-1.5";
-            modeSelect.className = "p-3 rounded-xl border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5 font-medium text-xs tracking-wide uppercase transition-all flex flex-col items-center justify-center space-y-1.5";
-        });
-
-        roleButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                roleButtons.forEach(b => {
-                    b.className = "role-btn py-2 px-1 rounded-xl text-xs font-bold text-center border transition-all bg-gray-900/60 text-gray-400 border-gray-800";
-                });
-                
-                selectedRole = btn.getAttribute('data-role');
-                let activeStyle = "bg-white text-black border-white shadow-lg";
-                if (selectedRole === 'player') activeStyle = "bg-amber-500/10 text-amber-400 border-amber-500/30 shadow-lg";
-                if (selectedRole === 'opponent') activeStyle = "bg-purple-500/10 text-purple-400 border-purple-500/30 shadow-lg";
-                
-                btn.className = `role-btn py-2 px-1 rounded-xl text-xs font-bold text-center border transition-all ${activeStyle}`;
-            });
-        });
-
-
-        window.onload = function() {
-            resizeCanvas();
-            initDefaultSetup();
-        };
-    </script>
+        ctx.beginPath(); ctx.moveTo(cue.x, cue.y); ctx.lineTo(shot.ghost.x, shot.ghost.y); ctx.strokeStyle = "rgba(255,255,255,.72)"; ctx.lineWidth = 2.2; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(shot.target.x, shot.target.y); ctx.lineTo(shot.pocket.x, shot.pocket.y); ctx.strokeStyle = profile === "straight" ? "#10b981" : "#38bdf8"; ctx.lineWidth = 2.6; if (profile !== "straight") ctx.setLineDash([7,5]); ctx.stroke(); ctx.setLineDash([]);
+        drawSphere(ctx, shot.ghost.x, shot.ghost.y, BALL_RADIUS, "rgba(255,255,255,.8)", false, true);
+        valCutAngle.textContent = profile === "straight" ? Math.abs(shot.cut).toFixed(1) + "°" : profile === "combo" ? "Combo Chain" : "Bank Angle";
+        const risk = shot.illegalFirstContact || shot.blocked ? "Foul Risk Blocked" : shot.scratch ? "Scratch Threat Danger" : profile === "straight" && Math.abs(shot.cut) > 45 ? "Difficult Thin Cut" : profile === "straight" ? "Clear Path" : profile === "combo" ? "Complex Matrix" : "Check Rail Friction";
+        valScratchRisk.textContent = risk; valScratchRisk.className = risk.includes("Danger") ? "risk-warn" : risk.includes("Blocked") ? "risk-blocked" : risk.includes("Matrix") || risk.includes("Friction") ? "risk-info" : "risk-clear";
+        if (profile === "straight") diagnosticFeedback.textContent = (shot.target.id === activeTargetId ? "Selected Target" : "Best Logical Target") + ": Cut into the " + shot.pocket.name + " Pocket (Score: " + Math.round(shot.score) + "/100). " + (shot.blocked ? "Blocker obstruction flagged on entry. " : "Line of target strike is completely wide open. ") + (shot.scratch ? "Scratch warning on natural deflection tracks." : "");
+        if (profile === "combo") diagnosticFeedback.textContent = "BCA Combo Tracker: Straight-line simulation. Ensure striking the highlighted ball first to make shot legal.";
+        if (profile === "bank") diagnosticFeedback.textContent = "Bank shot alignment mapped across top bar box rail cushions. Ensure controlled velocity to manage soft-cushion compression deflections.";
+      }
+      balls.forEach((ball) => drawSphere(ctx, ball.x, ball.y, BALL_RADIUS, ball.color, ball.id === activeTargetId && ball.role !== "cue", false));
+      renderZoom(shot);
+    }
+    function setMode(mode) {
+      actionMode = mode;
+      document.getElementById("modePlace").className = "mode-btn" + (mode === "place" ? " active" : "");
+      document.getElementById("modeRemove").className = "mode-btn" + (mode === "remove" ? " remove-active" : "");
+    }
+    function reset() {
+      balls = [
+        { id: 1, x: 195, y: 195, role: "cue", color: "#f8fafc" },
+        { id: 2, x: 540, y: 140, role: "player", color: "#f59e0b" },
+        { id: 3, x: 620, y: 250, role: "player", color: "#10b981" },
+        { id: 4, x: 420, y: 220, role: "opponent", color: "#a855f7" }
+      ];
+      activeTargetId = 2; selectedBallIndex = -1; setMode("place"); render();
+    }
+    canvas.addEventListener("pointerdown", (event) => {
+      event.preventDefault(); canvas.setPointerCapture(event.pointerId);
+      const point = pointFromEvent(event);
+      const hit = balls.findIndex((ball) => distance(ball, point) < BALL_RADIUS * 1.8);
+      if (actionMode === "remove") { if (hit >= 0) { balls.splice(hit, 1); selectedBallIndex = -1; render(); } return; }
+      if (hit >= 0) { selectedBallIndex = hit; if (balls[hit].role !== "cue") activeTargetId = balls[hit].id; render(); return; }
+      const color = selectedRole === "cue" ? "#f8fafc" : selectedRole === "player" ? "#f59e0b" : "#a855f7";
+      if (selectedRole === "cue") balls = balls.filter((ball) => ball.role !== "cue");
+      const placed = { id: Date.now(), x: clamp(point.x, BALL_RADIUS, VW - BALL_RADIUS), y: clamp(point.y, BALL_RADIUS, VH - BALL_RADIUS), role: selectedRole, color };
+      balls.push(placed); selectedBallIndex = balls.length - 1; if (selectedRole !== "cue") activeTargetId = placed.id; render();
+    });
+    canvas.addEventListener("pointermove", (event) => {
+      if (selectedBallIndex < 0 || actionMode === "remove" || !canvas.hasPointerCapture(event.pointerId)) return;
+      const point = pointFromEvent(event), ball = balls[selectedBallIndex];
+      ball.x = clamp(point.x, BALL_RADIUS, VW - BALL_RADIUS); ball.y = clamp(point.y, BALL_RADIUS, VH - BALL_RADIUS); render();
+    });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((type) => canvas.addEventListener(type, () => { selectedBallIndex = -1; }));
+    document.getElementById("modePlace").addEventListener("click", () => setMode("place"));
+    document.getElementById("modeRemove").addEventListener("click", () => setMode("remove"));
+    document.querySelectorAll("[data-role]").forEach((button) => button.addEventListener("click", () => {
+      selectedRole = button.dataset.role; setMode("place");
+      document.querySelectorAll("[data-role]").forEach((item) => item.className = "role-btn" + (item.dataset.role === selectedRole ? " active " + selectedRole : ""));
+    }));
+    document.getElementById("btnReset").addEventListener("click", reset);
+    selectShotType.addEventListener("change", render);
+    if ("ResizeObserver" in window) new ResizeObserver(resizeCanvas).observe(wrapper);
+    else window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+  </script>
 </body>
 </html>
-
-
