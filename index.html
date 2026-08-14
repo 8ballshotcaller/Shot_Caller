@@ -726,26 +726,6 @@ button{
          color: inherit;
          font-style: normal;
        }
-       .inline-eight {
-          inline-size: .86em;
-          block-size: .86em;
-          flex: 0 0 .86em;
-          margin: 0 .045em;
-          display: inline-grid;
-         place-items: center;
-          vertical-align: middle;
-          border: 1px solid rgba(255,255,255,.42);
-         border-radius: 50%;
-          background: radial-gradient(circle at 32% 25%, #3b4347 0 8%, #151a1d 36%, #030405 76%, #000 100%);
-         color: #f5f7f8;
-         font-family: inherit;
-          font-size: .47em;
-         font-weight: 900;
-         line-height: 1;
-         text-align: center;
-          box-shadow: inset -1px -2px 2px rgba(0,0,0,.65), 0 0 0 1px rgba(217,255,63,.34);
-          transform: translateY(.02em);
-      }
       .pro-instruction {
         border-left-width: 4px;
         padding: 10px 12px 10px 13px;
@@ -769,7 +749,7 @@ button{
 <header class="header">
   <div class="brand">
     <div class="brand-mark" aria-hidden="true"><span class="mark-eight">8</span><span class="mark-ring"></span></div>
-      <div class="brand-name"><span>Sh<span class="inline-eight">8</span>t</span><span>Caller</span></div>
+      <div class="brand-name"><span>Shot</span><span>Caller</span></div>
   </div>
 
   <button class="reset" id="reset">
@@ -793,7 +773,7 @@ button{
 
   <div class="section-head">
     <div class="section-title">
-      The Call
+      TIP
     </div>
 
     <div class="section-accent">
@@ -1006,6 +986,17 @@ const TABLE_H=50;
 
 const BALL_DIAMETER=2.25;
 const BALL_RADIUS=BALL_DIAMETER/2;
+
+/*
+  The playing surface is 100 x 50 inches. A real pool table's
+  cushion/rail assembly adds roughly two ball diameters to each
+  overall dimension, so the visible table is fitted as one
+  proportioned object rather than stretching the felt to the
+  canvas edges.
+*/
+const TABLE_RAIL_DEPTH=4.5;
+const OUTER_TABLE_W=TABLE_W+TABLE_RAIL_DEPTH*2;
+const OUTER_TABLE_H=TABLE_H+TABLE_RAIL_DEPTH*2;
 
 const RAIL={
   top:BALL_RADIUS,
@@ -3793,10 +3784,23 @@ function shotCall(s){
   const tip=
     tipCall(s);
 
+  /*
+    The cue-ball panel is the source of truth for the TIP text.
+    Combination shots rotate the first-contact direction into the
+    same player-facing view used by drawCueView; every other shot
+    uses the calculated tip vector directly.
+  */
+  const tipVector=
+    cueTipViewVector(s);
+
   return{
-    tip:tip,
-    tipVector:tip.vector,
-    tipText:tip.text,
+    tip:{
+      ...tip,
+      vector:tipVector,
+      text:shortSpinText(tipVector)
+    },
+    tipVector:tipVector,
+    tipText:shortSpinText(tipVector),
     objectVector:objectContactDirection(s),
     objectText:faceText(
       objectContactDirection(s)
@@ -3806,6 +3810,19 @@ function shotCall(s){
       targetContactDirection(s)
     )
   };
+}
+
+function cueTipViewVector(s){
+  if(!s){
+    return V(0,0);
+  }
+
+  return s.kind==="combination"
+    ?playerViewDirection(
+      s,
+      cueContactDirection(s)
+    )
+    :tipCall(s).vector;
 }
 
 /* ============================================================
@@ -3840,16 +3857,16 @@ function shortSpinText(vector){
   }
 
   const vertical=
-    vector.y<=-.18
+    vector.y<-.04
       ?"Top spin"
-      :vector.y>=.18
-        ?"Draw"
+      :vector.y>.04
+        ?"Bottom spin"
         :"";
 
   const horizontal=
-    vector.x<=-.18
+    vector.x<-.04
       ?"Left English"
-      :vector.x>=.18
+      :vector.x>.04
         ?"Right English"
         :"";
 
@@ -3862,7 +3879,7 @@ function shortSpinText(vector){
   }
 
   if(horizontal){
-    return"Center height, "+horizontal;
+    return horizontal;
   }
 
   return"Center ball, no English";
@@ -3948,8 +3965,8 @@ function scratchNotice(s){
   return callLine(
     "Scratch",
     highRisk
-      ?`The cue ball is tracking ${routeText} toward ${pocketShortName(s.scratch.pocket)}. Choose another line or another shot.`
-      :`The cue ball is tracking ${routeText} toward ${pocketShortName(s.scratch.pocket)}. Use the softer speed shown above.`,
+      ?`The cue ball is tracking ${routeText} toward a scratch. Choose another line or another shot.`
+      :`The cue ball is tracking ${routeText} toward a scratch. Use the softer speed shown above.`,
     "scratch-warning"
   );
 }
@@ -3981,7 +3998,6 @@ function instructionHTML(s){
   }
 
   const call=shotCall(s);
-  const pocketMarkup=`<span class="highlight">${pocketShortName(s.pocket)}</span>`;
   const spinMarkup=`<span class="highlight">${shortSpinText(call.tipVector)}</span>`;
   const objectFace=shortFaceText(call.objectVector);
   const objectNumber=s.kind==="combination"
@@ -3992,8 +4008,8 @@ function instructionHTML(s){
   if(s.kind==="combination"){
     return withScratch(
       callLine(
-        "Call",
-        `${spinMarkup}. Aim the cue ball at the marked approach point, send the ${ballMarkup} into ${s.targetBall.number}, then finish at ${pocketMarkup}.`
+        "Tip",
+        `${spinMarkup}. Send the ${ballMarkup} into ${s.targetBall.number}.`
       ),
       s
     );
@@ -4002,7 +4018,7 @@ function instructionHTML(s){
   if(s.kind==="kick"){
     return withScratch(
       callLine(
-        "Call",
+        "Tip",
         `${spinMarkup}. Take the ${railText(s.rail)} first, then contact the ${ballMarkup}.`
       ),
       s
@@ -4012,7 +4028,7 @@ function instructionHTML(s){
   if(s.kind==="bank"){
     return withScratch(
       callLine(
-        "Call",
+        "Tip",
         `${spinMarkup}. Hit the ${ballMarkup} ${objectFace}, using the ${railText(s.rail)}.`
       ),
       s
@@ -4021,10 +4037,10 @@ function instructionHTML(s){
 
   return withScratch(
     callLine(
-      "Call",
+      "Tip",
       s.kind==="straight"
-        ?`${spinMarkup}. Center the ${ballMarkup} and send it to ${pocketMarkup}.`
-        :`${spinMarkup}. Contact the ${ballMarkup} ${objectFace}; the visual route ends at ${pocketMarkup}.`
+        ?`${spinMarkup}. Hit the ${ballMarkup} center.`
+        :`${spinMarkup}. Contact the ${ballMarkup} ${objectFace}.`
     ),
     s
   );
@@ -4054,27 +4070,35 @@ function geometry(){
   const w=canvas.width;
   const h=canvas.height;
   /*
-    Fit the complete physical table inside the backing canvas. The
-    previous revision applied a viewport zoom after calculating the
-    inset, which made the two side rails extend beyond the canvas on
-    narrow screens. One fitted scale is now shared by every visual
-    element and the pointer transform.
+    Fit the complete physical table, including its rails, inside
+    the backing canvas. The solver's coordinates still describe
+    the 100 x 50 inch playing surface; the outer bounds are used
+    only for the visible table geometry.
   */
   const inset=Math.min(w,h)*.085;
   const availableW=Math.max(1,w-inset*2);
   const availableH=Math.max(1,h-inset*2);
   const scale=Math.min(
-    availableW/TABLE_W,
-    availableH/TABLE_H
+    availableW/OUTER_TABLE_W,
+    availableH/OUTER_TABLE_H
   );
+  const outerW=OUTER_TABLE_W*scale;
+  const outerH=OUTER_TABLE_H*scale;
+  const outerX=(w-outerW)/2;
+  const outerY=(h-outerH)/2;
   const tableW=TABLE_W*scale;
   const tableH=TABLE_H*scale;
   return{
-    x:(w-tableW)/2,
-    y:(h-tableH)/2,
+    x:outerX+TABLE_RAIL_DEPTH*scale,
+    y:outerY+TABLE_RAIL_DEPTH*scale,
     w:tableW,
     h:tableH,
-    scale
+    scale,
+    outerX,
+    outerY,
+    outerW,
+    outerH,
+    railDepth:TABLE_RAIL_DEPTH*scale
   };
 }
 
@@ -4215,11 +4239,11 @@ function drawTable(){
 
   roundedRect(
     ctx,
-    0,
-    0,
-    w,
-    h,
-    Math.min(w,h)*.035
+    g.outerX,
+    g.outerY,
+    g.outerW,
+    g.outerH,
+    Math.min(g.outerW,g.outerH)*.035
   );
 
   ctx.fill();
@@ -4278,17 +4302,15 @@ function drawTable(){
 }
 
 /*
-  The original cloth rectangle already established the physical
-  table viewport. These four visible cushion faces are purely a
-  presentation layer around that same viewport; the solver still
-  uses the unchanged RAIL constants above.
+  The visible cushion faces are the space between the fitted outer
+  table and the playing surface. All four faces use the same
+  physical depth, so the brown side rails cannot become oversized
+  just because the canvas is wider than the table's true outline.
+  The solver still uses the unchanged RAIL constants above.
 */
 function drawRails(g){
-  const depth=Math.min(
-    g.x,
-    g.y,
-    Math.max(5,Math.min(canvas.width,canvas.height)*.035)
-  );
+  const depth=g.railDepth;
+  const sideDepth=depth;
   const railGradient=ctx.createLinearGradient(0,0,0,canvas.height);
   railGradient.addColorStop(0,"#6d4a28");
   railGradient.addColorStop(.5,"#321e11");
@@ -4297,8 +4319,8 @@ function drawRails(g){
 
   ctx.fillRect(g.x-depth,g.y-depth,g.w+depth*2,depth);
   ctx.fillRect(g.x-depth,g.y+g.h,g.w+depth*2,depth);
-  ctx.fillRect(g.x-depth,g.y,depth,g.h);
-  ctx.fillRect(g.x+g.w,g.y,depth,g.h);
+  ctx.fillRect(g.x-sideDepth,g.y,sideDepth,g.h);
+  ctx.fillRect(g.x+g.w,g.y,sideDepth,g.h);
 
   ctx.strokeStyle="rgba(245,204,142,.18)";
   ctx.lineWidth=Math.max(1,depth*.12);
@@ -5826,12 +5848,7 @@ function drawCueView(c){
     Normal shots continue to use the spin/tip call.
   */
   const direction=
-    s.kind==="combination"
-      ?playerViewDirection(
-        s,
-        cueContactDirection(s)
-      )
-      :shotCall(s).tipVector;
+    cueTipViewVector(s);
 
   if(
     len(direction)<.02
