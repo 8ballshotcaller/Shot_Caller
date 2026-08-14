@@ -31,6 +31,7 @@ html,
 body{
   margin:0;
   min-height:100%;
+  overflow-y:auto;
   background:
     radial-gradient(
       circle at 50% -10%,
@@ -117,7 +118,7 @@ button{
 
 .table-stage{
   width:100%;
-  aspect-ratio:2/1;
+  aspect-ratio:1/2;
   position:relative;
   max-width:100%;
   margin:0 auto;
@@ -131,7 +132,8 @@ button{
   width:100%;
   height:100%;
   display:block;
-  touch-action:none;
+  /* Let vertical swipes scroll the page unless a game gesture is active. */
+  touch-action:pan-y;
 }
 
 .side{
@@ -160,6 +162,15 @@ button{
   font-size:13px;
   font-weight:950;
   letter-spacing:-.02em;
+}
+
+.subsection-title{
+  margin-top:12px;
+  margin-bottom:6px;
+  color:#dce3e6;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:-.01em;
 }
 
 .section-accent{
@@ -773,7 +784,7 @@ button{
 
   <div class="section-head">
     <div class="section-title">
-      TIP
+      The Call
     </div>
 
     <div class="section-accent">
@@ -853,6 +864,10 @@ button{
       </div>
     </div>
 
+  </div>
+
+  <div class="subsection-title">
+    Shot Breakdown
   </div>
 
   <div class="pro-instruction" id="instruction">
@@ -981,18 +996,25 @@ button{
    PHYSICAL TABLE
    ============================================================ */
 
-const TABLE_W=100;
-const TABLE_H=50;
+/*
+  The original table is 100 x 50 inches. Its physical orientation is
+  now turned clockwise by 90 degrees, so the logical playing surface
+  is 50 x 100 inches. Keeping the solver in table space means all
+  shot, collision, pocket, and interaction calculations follow the
+  rotated table without a separate screen-space transform.
+*/
+const TABLE_W=50;
+const TABLE_H=100;
 
 const BALL_DIAMETER=2.25;
 const BALL_RADIUS=BALL_DIAMETER/2;
 
 /*
-  The playing surface is 100 x 50 inches. A real pool table's
-  cushion/rail assembly adds roughly two ball diameters to each
-  overall dimension, so the visible table is fitted as one
-  proportioned object rather than stretching the felt to the
-  canvas edges.
+  The playing surface is now represented as 50 x 100 inches after
+  the physical 90-degree turn. A real pool table's cushion/rail
+  assembly adds roughly two ball diameters to each overall dimension,
+  so the visible table is fitted as one proportioned object rather
+  than stretching the felt to the canvas edges.
 */
 const TABLE_RAIL_DEPTH=4.5;
 const OUTER_TABLE_W=TABLE_W+TABLE_RAIL_DEPTH*2;
@@ -1018,16 +1040,16 @@ const POCKETS=[
   },
   {
     id:"TM",
-    name:"Top Side",
-    x:50,
-    y:0,
+    name:"Left Side",
+    x:0,
+    y:50,
     type:"side",
     opening:POCKET_SIZE
   },
   {
     id:"TR",
     name:"Top Right Corner",
-    x:100,
+    x:50,
     y:0,
     type:"corner",
     opening:POCKET_SIZE
@@ -1036,13 +1058,13 @@ const POCKETS=[
     id:"BL",
     name:"Bottom Left Corner",
     x:0,
-    y:50,
+    y:100,
     type:"corner",
     opening:POCKET_SIZE
   },
   {
     id:"BM",
-    name:"Bottom Side",
+    name:"Right Side",
     x:50,
     y:50,
     type:"side",
@@ -1051,8 +1073,8 @@ const POCKETS=[
   {
     id:"BR",
     name:"Bottom Right Corner",
-    x:100,
-    y:50,
+    x:50,
+    y:100,
     type:"corner",
     opening:POCKET_SIZE
   }
@@ -1090,21 +1112,21 @@ const BALL_MAP=Object.fromEntries(
 
 const state={
   cue:{
-    x:22,
-    y:34
+    x:16,
+    y:22
   },
 
   object:{
-    x:65,
-    y:20,
+    x:30,
+    y:65,
     number:3
   },
 
   tableBalls:[
     {
       number:3,
-      x:65,
-      y:20,
+      x:30,
+      y:65,
       role:"object",
       owner:"target"
     }
@@ -1298,6 +1320,67 @@ function clearToBall(
     target,
     ignored
   );
+}
+
+/*
+  A candidate is invalid if the cue ball's planned travel reaches
+  a pocket before the intended contact point. This is deliberately
+  separate from scratchAnalysis(), which remains a player-facing
+  warning for otherwise valid shots whose execution can go wrong.
+*/
+function pathCrossesPocket(
+  start,
+  end,
+  ignoreNumbers=[]
+){
+  const travel=sub(end,start);
+  const travelDistance=len(travel);
+
+  if(travelDistance<.01){
+    return false;
+  }
+
+  const unit=norm(travel);
+
+  for(const pocket of POCKETS){
+    const toPocket=sub(pocket,start);
+    const along=dot(toPocket,unit);
+
+    if(
+      along<=BALL_RADIUS||
+      along>=travelDistance-BALL_RADIUS
+    ){
+      continue;
+    }
+
+    const closest=add(
+      start,
+      mul(unit,along)
+    );
+
+    const acceptance=
+      pocket.type==="side"
+        ?pocket.opening*.62
+        :pocket.opening*.76;
+
+    if(
+      dist(closest,pocket)>acceptance
+    ){
+      continue;
+    }
+
+    if(
+      pathClear(
+        start,
+        pocket,
+        ignoreNumbers
+      )
+    ){
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /* ============================================================
@@ -1639,6 +1722,16 @@ function directCandidate(
 
   if(
     !clearToBall(
+      cue,
+      ghost,
+      [object.number]
+    )
+  ){
+    return null;
+  }
+
+  if(
+    pathCrossesPocket(
       cue,
       ghost,
       [object.number]
@@ -2386,6 +2479,16 @@ function bankCandidate(
     return null;
   }
 
+  if(
+    pathCrossesPocket(
+      cue,
+      ghost,
+      [object.number]
+    )
+  ){
+    return null;
+  }
+
   const cueDirection=
     norm(
       sub(
@@ -2580,7 +2683,27 @@ function kickCandidate(
   }
 
   if(
+    pathCrossesPocket(
+      cue,
+      kickPoint,
+      [object.number]
+    )
+  ){
+    return null;
+  }
+
+  if(
     !clearToBall(
+      kickPoint,
+      ghost,
+      [object.number]
+    )
+  ){
+    return null;
+  }
+
+  if(
+    pathCrossesPocket(
       kickPoint,
       ghost,
       [object.number]
@@ -3953,20 +4076,39 @@ function scratchNotice(s){
   }
 
   const route=s.scratch.route;
-  const routeText=
-    route&&
-    route.type==="rail"
-      ?`after a ${railText(route.rail)} rebound`
-      :"on the current cue-ball path";
-
   const highRisk=
     (s.scratch.risk||0)>=.84;
 
+  const angleRisk=
+    (s.cutDegrees||0)>=45;
+
+  let warning;
+
+  if(
+    route&&
+    route.type==="rail"
+  ){
+    warning=
+      highRisk
+        ?"Careful — this rebound line could result in a scratch."
+        :"Careful — too much speed after the rebound could result in a scratch.";
+  }else if(
+    highRisk
+  ){
+    warning=
+      angleRisk
+        ?"Careful — a wider angle could result in a scratch."
+        :"Careful — this line could result in a scratch.";
+  }else{
+    warning=
+      angleRisk
+        ?"Careful — a wider angle could result in a scratch."
+        :"Careful — too much speed could result in a scratch.";
+  }
+
   return callLine(
     "Scratch",
-    highRisk
-      ?`The cue ball is tracking ${routeText} toward a scratch. Choose another line or another shot.`
-      :`The cue ball is tracking ${routeText} toward a scratch. Use the softer speed shown above.`,
+    warning,
     "scratch-warning"
   );
 }
@@ -4008,7 +4150,7 @@ function instructionHTML(s){
   if(s.kind==="combination"){
     return withScratch(
       callLine(
-        "Tip",
+        "TIP",
         `${spinMarkup}. Send the ${ballMarkup} into ${s.targetBall.number}.`
       ),
       s
@@ -4018,7 +4160,7 @@ function instructionHTML(s){
   if(s.kind==="kick"){
     return withScratch(
       callLine(
-        "Tip",
+        "TIP",
         `${spinMarkup}. Take the ${railText(s.rail)} first, then contact the ${ballMarkup}.`
       ),
       s
@@ -4028,7 +4170,7 @@ function instructionHTML(s){
   if(s.kind==="bank"){
     return withScratch(
       callLine(
-        "Tip",
+        "TIP",
         `${spinMarkup}. Hit the ${ballMarkup} ${objectFace}, using the ${railText(s.rail)}.`
       ),
       s
@@ -4037,7 +4179,7 @@ function instructionHTML(s){
 
   return withScratch(
     callLine(
-      "Tip",
+      "TIP",
       s.kind==="straight"
         ?`${spinMarkup}. Hit the ${ballMarkup} center.`
         :`${spinMarkup}. Contact the ${ballMarkup} ${objectFace}.`
@@ -4075,7 +4217,7 @@ function geometry(){
     the 100 x 50 inch playing surface; the outer bounds are used
     only for the visible table geometry.
   */
-  const inset=Math.min(w,h)*.085;
+  const inset=Math.min(w,h)*.045;
   const availableW=Math.max(1,w-inset*2);
   const availableH=Math.max(1,h-inset*2);
   const scale=Math.min(
@@ -4317,14 +4459,40 @@ function drawRails(g){
   railGradient.addColorStop(1,"#4f3018");
   ctx.fillStyle=railGradient;
 
+  /*
+    Keep the slight corner softening purely visual. The solver still
+    uses the same straight rail limits; clipping only prevents the
+    visible rail fills from square-cutting the rounded outer corners.
+  */
+  ctx.save();
+  roundedRect(
+    ctx,
+    g.outerX,
+    g.outerY,
+    g.outerW,
+    g.outerH,
+    Math.min(g.outerW,g.outerH)*.035
+  );
+  ctx.clip();
+
   ctx.fillRect(g.x-depth,g.y-depth,g.w+depth*2,depth);
   ctx.fillRect(g.x-depth,g.y+g.h,g.w+depth*2,depth);
   ctx.fillRect(g.x-sideDepth,g.y,sideDepth,g.h);
   ctx.fillRect(g.x+g.w,g.y,sideDepth,g.h);
 
+  ctx.restore();
+
   ctx.strokeStyle="rgba(245,204,142,.18)";
   ctx.lineWidth=Math.max(1,depth*.12);
-  ctx.strokeRect(g.x-depth*.35,g.y-depth*.30,g.w+depth*.70,g.h+depth*.60);
+  roundedRect(
+    ctx,
+    g.x-depth*.35,
+    g.y-depth*.30,
+    g.w+depth*.70,
+    g.h+depth*.60,
+    Math.min(g.outerW,g.outerH)*.028
+  );
+  ctx.stroke();
 }
 
 /* ============================================================
@@ -4370,6 +4538,11 @@ function drawDiamonds(g){
     ctx.restore();
   }
 
+  /*
+    The long physical rails are now vertical after the 90-degree
+    rotation, so they retain the larger regulation diamond count.
+    The shorter horizontal rails retain the smaller count.
+  */
   [
     .125,
     .25,
@@ -4378,6 +4551,22 @@ function drawDiamonds(g){
     .625,
     .75,
     .875
+  ].forEach(t=>{
+    diamond(
+      g.x-size*.72,
+      g.y+g.h*t
+    );
+
+    diamond(
+      g.x+g.w+size*.72,
+      g.y+g.h*t
+    );
+  });
+
+  [
+    .25,
+    .5,
+    .75
   ].forEach(t=>{
 
     diamond(
@@ -4388,24 +4577,6 @@ function drawDiamonds(g){
     diamond(
       g.x+g.w*t,
       g.y+g.h+size*.72
-    );
-
-  });
-
-  [
-    .25,
-    .5,
-    .75
-  ].forEach(t=>{
-
-    diamond(
-      g.x-size*.72,
-      g.y+g.h*t
-    );
-
-    diamond(
-      g.x+g.w+size*.72,
-      g.y+g.h*t
     );
 
   });
@@ -6675,8 +6846,8 @@ function deleteSelectedBall(){
     }else{
 
       state.object={
-        x:65,
-        y:20,
+        x:30,
+        y:65,
         number:null
       };
 
@@ -6920,6 +7091,12 @@ function moveSelectedBall(p){
       return false;
     }
 
+    /*
+      Moving a ball changes the shot geometry. Return auto mode to
+      the full pocket search instead of keeping a previously tapped
+      pocket locked after the table layout changes.
+    */
+    state.selectedPocket=null;
     state.cue=next;
     solve();
     return true;
@@ -6949,6 +7126,7 @@ function moveSelectedBall(p){
       return false;
     }
 
+    state.selectedPocket=null;
     existing.x=next.x;
     existing.y=next.y;
 
@@ -6968,6 +7146,7 @@ function moveSelectedBall(p){
       return false;
     }
 
+    state.selectedPocket=null;
     const hasTarget=
       state.tableBalls.some(
         b=>
@@ -7036,8 +7215,6 @@ canvas.addEventListener(
   "pointerdown",
   event=>{
 
-    event.preventDefault();
-
     const p=
       fromScreen(
         event.clientX,
@@ -7048,6 +7225,7 @@ canvas.addEventListener(
       nearestBall(p);
 
     if(hit){
+      event.preventDefault();
 
       if(
         hit.type==="cue"
@@ -7121,6 +7299,7 @@ canvas.addEventListener(
 
     const pocket=nearestPocket(p);
     if(pocket){
+      event.preventDefault();
       /*
         Tapping the active mouth returns the solver to its
         suggested-pocket search, so there is no second HTML
@@ -7140,6 +7319,8 @@ canvas.addEventListener(
     ){
       return;
     }
+
+    event.preventDefault();
 
     dragPointerId=
       event.pointerId;
@@ -7227,21 +7408,21 @@ document.getElementById(
 ).onclick=()=>{
 
   state.cue={
-    x:22,
-    y:34
+    x:16,
+    y:22
   };
 
   state.object={
-    x:65,
-    y:20,
+    x:30,
+    y:65,
     number:3
   };
 
   state.tableBalls=[
     {
       number:3,
-      x:65,
-      y:20,
+      x:30,
+      y:65,
       role:"object",
       owner:"target"
     }
@@ -7327,8 +7508,8 @@ requestAnimationFrame(
     state.tableBalls=[
       {
         number:3,
-        x:65,
-        y:20,
+        x:30,
+        y:65,
         role:"object",
         owner:"target"
       }
