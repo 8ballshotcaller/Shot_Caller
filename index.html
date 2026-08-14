@@ -70,6 +70,34 @@ button{
   justify-content:space-between;
 }
 
+.table-hint{
+  position:absolute;
+  top:11px;
+  left:11.5%;
+  width:min(290px,calc(100% - 24px));
+  padding:0;
+  transform:none;
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.35;
+  letter-spacing:.01em;
+  text-align:left;
+  pointer-events:none;
+  z-index:1;
+}
+
+.table-hint strong{
+  display:block;
+  margin-bottom:2px;
+  color:var(--text);
+  font-weight:800;
+}
+
+.table-hint-line{
+  display:block;
+  white-space:nowrap;
+}
+
 .brand{
   display:flex;
   align-items:center;
@@ -773,6 +801,11 @@ button{
 <section class="card table-card">
 
   <div class="table-stage">
+    <div class="table-hint" aria-label="How to use">
+      <strong>How to use:</strong>
+      <span class="table-hint-line">Select the pocket you’re aiming for, or let Shot Caller choose for you.</span>
+      <span class="table-hint-line">Tap a ball, then tap anywhere on the table to reposition it.</span>
+    </div>
     <canvas id="table"></canvas>
   </div>
 
@@ -1483,10 +1516,16 @@ function pocketTargets(pocket){
       .forEach(offset=>{
 
         targets.push(
-          V(
-            pocket.x+offset,
-            pocket.y
-          )
+          pocket.x===0||
+          pocket.x===TABLE_W
+            ?V(
+              pocket.x,
+              pocket.y+offset
+            )
+            :V(
+              pocket.x+offset,
+              pocket.y
+            )
         );
 
       });
@@ -1541,10 +1580,10 @@ function pocketFacing(pocket){
 
   if(pocket.type==="side"){
     return V(
-      0,
-      pocket.y===0
+      pocket.x===0
         ?-1
-        :1
+        :1,
+      0
     );
   }
 
@@ -3013,6 +3052,20 @@ function rayPocketRoute(
     return null;
   }
 
+  /*
+    The route must enter the mouth from the table side. This is
+    especially important after the 90-degree rotation, where side
+    pockets face left/right rather than top/bottom.
+  */
+  if(
+    pocketApproachPenalty(
+      pocket,
+      unit
+    )===null
+  ){
+    return null;
+  }
+
   if(!pathClear(origin,pocket,ignoreNumbers)){
     return null;
   }
@@ -4076,6 +4129,10 @@ function scratchNotice(s){
   }
 
   const route=s.scratch.route;
+  const pocketName=
+    titleCasePocket(
+      s.scratch.pocket.name
+    );
   const highRisk=
     (s.scratch.risk||0)>=.84;
 
@@ -4090,20 +4147,20 @@ function scratchNotice(s){
   ){
     warning=
       highRisk
-        ?"Careful — this rebound line could result in a scratch."
-        :"Careful — too much speed after the rebound could result in a scratch.";
+        ?`Careful — this rebound line could result in a scratch into the ${pocketName}.`
+        :`Careful — too much speed after the rebound could result in a scratch into the ${pocketName}.`;
   }else if(
     highRisk
   ){
     warning=
       angleRisk
-        ?"Careful — a wider angle could result in a scratch."
-        :"Careful — this line could result in a scratch.";
+        ?`Careful — a wider angle could result in a scratch into the ${pocketName}.`
+        :`Careful — this line could result in a scratch into the ${pocketName}.`;
   }else{
     warning=
       angleRisk
-        ?"Careful — a wider angle could result in a scratch."
-        :"Careful — too much speed could result in a scratch.";
+        ?`Careful — a wider angle could result in a scratch into the ${pocketName}.`
+        :`Careful — too much speed could result in a scratch into the ${pocketName}.`;
   }
 
   return callLine(
