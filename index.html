@@ -112,12 +112,17 @@ button{
 .table-card{
   padding:9px;
   min-width:0;
+  overflow:hidden;
 }
 
 .table-stage{
   width:100%;
   aspect-ratio:2/1;
   position:relative;
+  max-width:100%;
+  margin:0 auto;
+  overflow:hidden;
+  border-radius:10px;
 }
 
 #table{
@@ -722,24 +727,24 @@ button{
          font-style: normal;
        }
        .inline-eight {
-          inline-size: .80em;
-          block-size: .80em;
-          flex: 0 0 .80em;
-          margin: 0 .055em;
+          inline-size: .86em;
+          block-size: .86em;
+          flex: 0 0 .86em;
+          margin: 0 .045em;
           display: inline-grid;
          place-items: center;
           vertical-align: middle;
-         border: 1px solid rgba(217,255,63,.75);
+          border: 1px solid rgba(255,255,255,.42);
          border-radius: 50%;
-         background: radial-gradient(circle at 32% 25%, #fafcfc 0 10%, #ccd3d5 22%, #47565c 72%, #121719 100%);
+          background: radial-gradient(circle at 32% 25%, #3b4347 0 8%, #151a1d 36%, #030405 76%, #000 100%);
          color: #f5f7f8;
          font-family: inherit;
-         font-size: .54em;
+          font-size: .47em;
          font-weight: 900;
          line-height: 1;
          text-align: center;
-         box-shadow: inset -1px -2px 2px rgba(0,0,0,.35);
-          transform: translateY(.015em);
+          box-shadow: inset -1px -2px 2px rgba(0,0,0,.65), 0 0 0 1px rgba(217,255,63,.34);
+          transform: translateY(.02em);
       }
       .pro-instruction {
         border-left-width: 4px;
@@ -751,6 +756,8 @@ button{
       @media (max-width: 520px) {
         .brand-mark { width: 27px; height: 27px; }
       .brand-name { font-size: 20px; gap: 4px; }
+      .table-card { padding: 6px; }
+      .table-stage { width: 100%; }
       }
     </style>
   </head>
@@ -3450,29 +3457,27 @@ function speedForShot(s){
     return"—";
   }
 
+  let base;
+
   if(
     s.kind==="kick"
   ){
 
-    return s.kickDistance>42
+    base=s.kickDistance>42
       ?"Hard"
       :s.kickDistance>25
         ?"Medium"
         :"Soft";
-  }
-
-  if(
+  }else if(
     s.kind==="bank"
   ){
 
-    return s.objectDistance>55
+    base=s.objectDistance>55
       ?"Hard"
       :s.objectDistance>32
         ?"Medium"
         :"Soft";
-  }
-
-  if(
+  }else if(
     s.kind==="combination"
   ){
 
@@ -3480,32 +3485,44 @@ function speedForShot(s){
       s.cueDistance+
       s.objectDistance;
 
-    return total>75
+    base=total>75
       ?"Hard"
       :total>45
         ?"Medium"
         :"Soft";
-  }
-
-  if(
+  }else if(
     s.cutDegrees>55
   ){
-    return"Medium";
-  }
-
-  if(
+    base="Medium";
+  }else if(
     s.objectDistance<18
   ){
+    base="Soft";
+  }else if(
+    s.objectDistance>55
+  ){
+    base="Hard";
+  }else{
+    base="Medium";
+  }
+
+  /*
+    A scratch-prone line gets a speed call that agrees with the
+    warning. A softer hit can reduce a rolling scratch, but a
+    high-confidence route is still called out as a line problem
+    instead of pretending speed alone fixes it.
+  */
+  const risk=s.scratch&&s.scratch.risk||0;
+
+  if(risk>=.84){
     return"Soft";
   }
 
-  if(
-    s.objectDistance>55
-  ){
-    return"Hard";
+  if(risk>=.58&&base==="Hard"){
+    return"Medium";
   }
 
-  return"Medium";
+  return base;
 }
 
 /* ============================================================
@@ -3925,9 +3942,14 @@ function scratchNotice(s){
       ?`after a ${railText(route.rail)} rebound`
       :"on the current cue-ball path";
 
+  const highRisk=
+    (s.scratch.risk||0)>=.84;
+
   return callLine(
     "Scratch",
-    `The cue ball is tracking ${routeText} toward ${pocketShortName(s.scratch.pocket)}. Use a softer hit or choose another line.`,
+    highRisk
+      ?`The cue ball is tracking ${routeText} toward ${pocketShortName(s.scratch.pocket)}. Choose another line or another shot.`
+      :`The cue ball is tracking ${routeText} toward ${pocketShortName(s.scratch.pocket)}. Use the softer speed shown above.`,
     "scratch-warning"
   );
 }
@@ -3971,7 +3993,7 @@ function instructionHTML(s){
     return withScratch(
       callLine(
         "Call",
-        `${spinMarkup}. Send the ${ballMarkup} into ${s.targetBall.number}, then finish at ${pocketMarkup}.`
+        `${spinMarkup}. Aim the cue ball at the marked approach point, send the ${ballMarkup} into ${s.targetBall.number}, then finish at ${pocketMarkup}.`
       ),
       s
     );
@@ -5797,11 +5819,19 @@ function drawCueView(c){
   }
 
   /*
-    TIP PLACEMENT ONLY.
-    This is the exact vector the sentence describes.
+    For a combination the cue ball's actionable visual is the
+    actual cue-to-first-contact approach. A centered tip marker
+    hides the required line and makes the combo look like a
+    center-ball shot even when the first-ball geometry is cut.
+    Normal shots continue to use the spin/tip call.
   */
   const direction=
-    shotCall(s).tipVector;
+    s.kind==="combination"
+      ?playerViewDirection(
+        s,
+        cueContactDirection(s)
+      )
+      :shotCall(s).tipVector;
 
   if(
     len(direction)<.02
@@ -5819,8 +5849,10 @@ function drawCueView(c){
     c,
     ball,
     direction,
-    .48+
-      len(direction)*.62
+    s.kind==="combination"
+      ?.88
+      :.48+len(direction)*.62,
+    s.kind==="combination"
   );
 }
 
