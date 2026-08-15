@@ -100,9 +100,9 @@ button{
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  margin-top:8px;
-  padding:8px 5px 0;
-  border-top:1px solid rgba(255,255,255,.055);
+  margin:0 0 8px;
+  padding:0 5px 8px;
+  border-bottom:1px solid rgba(255,255,255,.055);
 }
 
 .table-lock-copy{
@@ -835,10 +835,6 @@ button{
 
 <section class="card table-card">
 
-  <div class="table-stage">
-    <canvas id="table"></canvas>
-  </div>
-
   <div class="table-lock-bar">
     <div class="table-lock-copy">
       <div class="table-lock-status" id="tableLockStatus">Table unlocked</div>
@@ -852,6 +848,10 @@ button{
     >
       Lock Table
     </button>
+  </div>
+
+  <div class="table-stage">
+    <canvas id="table"></canvas>
   </div>
 
   <div class="table-hint" aria-label="How to use">
