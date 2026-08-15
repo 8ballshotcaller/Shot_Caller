@@ -181,7 +181,9 @@ button{
 
 .table-stage{
   width:100%;
-  aspect-ratio:1/2;
+  /* Match the visible table's 59:109 outer proportions so it does not
+     leave a large centered gap above the rails on tall mobile screens. */
+  aspect-ratio:59/109;
   position:relative;
   max-width:100%;
   margin:0 auto;
@@ -727,6 +729,12 @@ button{
     font-size: 10px;
     font-weight: 950;
     letter-spacing: .08em;
+  }
+  .reset, .table-lock {
+    width: 116px;
+    min-width: 116px;
+    height: 34px;
+    min-height: 34px;
   }
   .ownership-help { display: grid; gap: 4px; }
   .ownership-section.eight-ball-auto .ownership-label,
