@@ -71,19 +71,16 @@ button{
 }
 
 .table-hint{
-  position:absolute;
-  top:11px;
-  left:4.5%;
-  width:min(290px,calc(100% - 24px));
-  padding:0;
+  margin-top:9px;
+  padding:9px 5px 1px;
+  border-top:1px solid rgba(255,255,255,.055);
+  width:100%;
   transform:none;
   color:var(--muted);
   font-size:9px;
   line-height:1.35;
   letter-spacing:.01em;
   text-align:left;
-  pointer-events:none;
-  z-index:1;
 }
 
 .table-hint strong{
@@ -95,7 +92,45 @@ button{
 
 .table-hint-line{
   display:block;
-  white-space:nowrap;
+  white-space:normal;
+}
+
+.table-lock-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:8px;
+  padding:8px 5px 0;
+  border-top:1px solid rgba(255,255,255,.055);
+}
+
+.table-lock-copy{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.table-lock-status{
+  color:#e3e8ea;
+  font-size:10px;
+  font-weight:900;
+}
+
+.table-lock-help{
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.25;
+}
+
+.table-lock.active{
+  background:var(--lime);
+  border-color:var(--lime);
+  color:#10150b;
+  box-shadow:
+    0 0 0 1px rgba(217,255,63,.15),
+    0 2px 7px rgba(217,255,63,.12);
 }
 
 .brand{
@@ -801,12 +836,28 @@ button{
 <section class="card table-card">
 
   <div class="table-stage">
-    <div class="table-hint" aria-label="How to use">
-      <strong>How to use:</strong>
-      <span class="table-hint-line">Select the pocket you’re aiming for, or let Shot Caller choose for you.</span>
-      <span class="table-hint-line">Tap a ball, then tap anywhere on the table to reposition it.</span>
-    </div>
     <canvas id="table"></canvas>
+  </div>
+
+  <div class="table-lock-bar">
+    <div class="table-lock-copy">
+      <div class="table-lock-status" id="tableLockStatus">Table unlocked</div>
+      <div class="table-lock-help" id="tableLockHelp">Drag balls to set up the layout.</div>
+    </div>
+    <button
+      class="section-action table-lock"
+      id="tableLock"
+      type="button"
+      aria-pressed="false"
+    >
+      Lock Table
+    </button>
+  </div>
+
+  <div class="table-hint" aria-label="How to use">
+    <strong>How to use:</strong>
+    <span class="table-hint-line">Select the pocket you’re aiming for, or let Shot Caller choose for you.</span>
+    <span class="table-hint-line">Tap a ball, then tap anywhere on the table to reposition it.</span>
   </div>
 
 </section>
@@ -1170,7 +1221,8 @@ const state={
   selectedPocket:null,
   mode:"auto",
   solution:null,
-  contactBall:null
+  contactBall:null,
+  tableLocked:false
 };
 
 /* ============================================================
@@ -1789,6 +1841,21 @@ function directCandidate(
     return null;
   }
 
+  /*
+    The intended pocket must be the first pocket the object ball
+    can reach on this line. Otherwise a line that crosses another
+    pocket before the called target can produce a misleading call.
+  */
+  if(
+    pathCrossesPocket(
+      object,
+      target,
+      [object.number]
+    )
+  ){
+    return null;
+  }
+
   const cutDegrees=
     cutAngleDegrees(
       cue,
@@ -2055,10 +2122,23 @@ function combinationCandidate(
     !clearToBall(
       cue,
       cueGhost,
-      [
-        firstBall.number,
-        secondBall.number
-      ]
+      [firstBall.number]
+    )
+  ){
+    return null;
+  }
+
+  /*
+    The cue ball must contact the legal first ball before it can
+    reach the target ball. Do not ignore the target on this leg:
+    doing so can recommend a foul where the opponent's/8 ball is
+    actually hit first.
+  */
+  if(
+    pathCrossesPocket(
+      cue,
+      cueGhost,
+      [firstBall.number]
     )
   ){
     return null;
@@ -2079,6 +2159,19 @@ function combinationCandidate(
   */
   if(
     !clearToBall(
+      firstBall,
+      secondBallContactPoint,
+      [
+        firstBall.number,
+        secondBall.number
+      ]
+    )
+  ){
+    return null;
+  }
+
+  if(
+    pathCrossesPocket(
       firstBall,
       secondBallContactPoint,
       [
@@ -2470,6 +2563,21 @@ function bankCandidate(
 
   if(
     !clearToBall(
+      bankPoint,
+      target,
+      [object.number]
+    )
+  ){
+    return null;
+  }
+
+  if(
+    pathCrossesPocket(
+      object,
+      bankPoint,
+      [object.number]
+    )||
+    pathCrossesPocket(
       bankPoint,
       target,
       [object.number]
@@ -3425,106 +3533,21 @@ function solve(){
     state.mode==="auto"
   ){
 
-    direct.sort(
-      (a,b)=>
-        a.score-b.score
-    );
-
-    combos.sort(
-      (a,b)=>
-        a.score-b.score
-    );
-
-    banks.sort(
-      (a,b)=>
-        a.score-b.score
-    );
-
-    kicks.sort(
-      (a,b)=>
-        a.score-b.score
-    );
-
     /*
-      A clean, intentional player's-ball combination gets
-      real priority when it is geometrically strong.
-
-      This fixes the previous behavior where the solver would
-      effectively pretend the player's ball did not exist.
+      Auto mode compares every legal, clear candidate after
+      geometry, difficulty, and scratch risk have been scored.
+      The previous direct-first fallback could keep a difficult
+      cut even when a safer bank or kick was available.
     */
-    if(combos.length){
-
-      const combo=combos[0];
-
-      const comboQuality=
-        combo.transferAngle<=38;
-
-      const hasDirect=
-        direct.length>0;
-
-      if(
-        !hasDirect||
-        comboQuality&&
-        (
-          !direct.length||
-          direct[0].kind!=="straight"&&
-          combo.score<=direct[0].score*1.18
-        )
-      ){
-
-        best=combo;
-      }
-    }
-
-    /*
-      If a clearly superior direct shot exists, keep it.
-    */
-    if(
-      !best&&
-      direct.length
-    ){
-
-      best=direct[0];
-    }
-
-    /*
-      If the combo exists but the direct shot was selected,
-      still allow a clean combo to replace a difficult cut.
-    */
-    if(
-      best&&
-      best.kind!=="combination"&&
-      combos.length
-    ){
-
-      const combo=combos[0];
-
-      if(
-        best.kind==="cut"&&
-        best.cutDegrees>=42&&
-        combo.transferAngle<=42&&
-        combo.score<=best.score*1.12
-      ){
-
-        best=combo;
-      }
-    }
-
-    if(
-      !best&&
-      banks.length
-    ){
-
-      best=banks[0];
-    }
-
-    if(
-      !best&&
-      kicks.length
-    ){
-
-      best=kicks[0];
-    }
+    best=[
+      ...direct,
+      ...combos,
+      ...banks,
+      ...kicks
+    ].sort(
+      (a,b)=>
+        a.score-b.score
+    )[0]||null;
 
   }else if(
     state.mode==="straight"
@@ -3993,12 +4016,13 @@ function cueTipViewVector(s){
     return V(0,0);
   }
 
-  return s.kind==="combination"
-    ?playerViewDirection(
-      s,
-      cueContactDirection(s)
-    )
-    :tipCall(s).vector;
+  /*
+    The cue-ball panel is a tip/spin instruction, not a second
+    aim diagram. Combination routes are already drawn on the table;
+    keeping this vector tied to tipCall() prevents the red marker
+    and the written TIP call from disagreeing.
+  */
+  return tipCall(s).vector;
 }
 
 /* ============================================================
@@ -4208,7 +4232,7 @@ function instructionHTML(s){
     return withScratch(
       callLine(
         "TIP",
-        `${spinMarkup}. Send the ${ballMarkup} into ${s.targetBall.number}.`
+        `${spinMarkup}. Send the ${ballMarkup} into ${s.targetBall.number} for ${pocketShortName(s.pocket)}.`
       ),
       s
     );
@@ -4218,7 +4242,7 @@ function instructionHTML(s){
     return withScratch(
       callLine(
         "TIP",
-        `${spinMarkup}. Take the ${railText(s.rail)} first, then contact the ${ballMarkup}.`
+        `${spinMarkup}. Take the ${railText(s.rail)} first, then contact the ${ballMarkup} for ${pocketShortName(s.pocket)}.`
       ),
       s
     );
@@ -4228,7 +4252,7 @@ function instructionHTML(s){
     return withScratch(
       callLine(
         "TIP",
-        `${spinMarkup}. Hit the ${ballMarkup} ${objectFace}, using the ${railText(s.rail)}.`
+        `${spinMarkup}. Hit the ${ballMarkup} ${objectFace}, using the ${railText(s.rail)} for ${pocketShortName(s.pocket)}.`
       ),
       s
     );
@@ -4238,8 +4262,8 @@ function instructionHTML(s){
     callLine(
       "TIP",
       s.kind==="straight"
-        ?`${spinMarkup}. Hit the ${ballMarkup} center.`
-        :`${spinMarkup}. Contact the ${ballMarkup} ${objectFace}.`
+        ?`${spinMarkup}. Hit the ${ballMarkup} center for ${pocketShortName(s.pocket)}.`
+        :`${spinMarkup}. Contact the ${ballMarkup} ${objectFace} for ${pocketShortName(s.pocket)}.`
     ),
     s
   );
@@ -6349,6 +6373,7 @@ function render(){
   renderModes();
   renderRack();
   renderOwnership();
+  renderTableLock();
 
   draw();
 }
@@ -6399,6 +6424,54 @@ function renderPockets(){
     pocket mouths are rendered and hit-tested in table space.
     With no selected mouth the solver remains in suggested mode.
   */
+}
+
+function renderTableLock(){
+  const button=
+    document.getElementById(
+      "tableLock"
+    );
+
+  const status=
+    document.getElementById(
+      "tableLockStatus"
+    );
+
+  const help=
+    document.getElementById(
+      "tableLockHelp"
+    );
+
+  if(!button||!status||!help){
+    return;
+  }
+
+  const locked=state.tableLocked;
+
+  button.textContent=
+    locked
+      ?"Unlock Table"
+      :"Lock Table";
+
+  button.setAttribute(
+    "aria-pressed",
+    String(locked)
+  );
+
+  button.classList.toggle(
+    "active",
+    locked
+  );
+
+  status.textContent=
+    locked
+      ?"Table locked"
+      :"Table unlocked";
+
+  help.textContent=
+    locked
+      ?"Balls are frozen; swipe freely to scroll."
+      :"Drag balls to set up the layout.";
 }
 
 /* ============================================================
@@ -6945,6 +7018,22 @@ document.querySelectorAll(
   }
 );
 
+document.getElementById(
+  "tableLock"
+).onclick=event=>{
+  event.preventDefault();
+  event.stopPropagation();
+
+  state.tableLocked=
+    !state.tableLocked;
+
+  state.selectedBall=null;
+  pendingPointer=null;
+  dragPointerId=null;
+
+  render();
+};
+
 function renderOwnership(){
 
   const selected=
@@ -7267,11 +7356,113 @@ function moveSelectedBall(p){
 }
 
 let dragPointerId=null;
+let pendingPointer=null;
+
+const DRAG_THRESHOLD=6;
+
+function captureForDrag(pointerId){
+  dragPointerId=pointerId;
+
+  if(
+    canvas.setPointerCapture
+  ){
+    canvas.setPointerCapture(
+      pointerId
+    );
+  }
+}
+
+function pointerDistanceFromStart(event){
+  if(!pendingPointer){
+    return{
+      x:0,
+      y:0,
+      distance:0
+    };
+  }
+
+  const x=
+    event.clientX-
+    pendingPointer.startX;
+
+  const y=
+    event.clientY-
+    pendingPointer.startY;
+
+  return{
+    x,
+    y,
+    distance:Math.hypot(x,y)
+  };
+}
+
+function beginPendingDrag(event){
+  if(
+    !pendingPointer||
+    pendingPointer.pointerId!==
+    event.pointerId
+  ){
+    return false;
+  }
+
+  const movement=
+    pointerDistanceFromStart(event);
+
+  if(
+    movement.distance<
+    DRAG_THRESHOLD
+  ){
+    return false;
+  }
+
+  /*
+    Keep the browser's native vertical pan. A vertical gesture
+    cancels table editing and never calls preventDefault(), so the
+    page can scroll even if the swipe starts over a ball.
+  */
+  if(
+    Math.abs(movement.y)>
+    Math.abs(movement.x)
+  ){
+    pendingPointer=null;
+    return false;
+  }
+
+  if(
+    pendingPointer.kind===
+    "ball"||
+    pendingPointer.kind===
+    "place"
+  ){
+    event.preventDefault();
+    captureForDrag(
+      event.pointerId
+    );
+    pendingPointer=null;
+
+    moveSelectedBall(
+      fromScreen(
+        event.clientX,
+        event.clientY
+      )
+    );
+
+    return true;
+  }
+
+  pendingPointer=null;
+  return false;
+}
 
 canvas.addEventListener(
   "pointerdown",
   event=>{
 
+    /*
+      A locked table has no ball-edit gesture at all. Pocket
+      selection remains available, but every other pointerdown is
+      left untouched so mobile scrolling stays native.
+    */
     const p=
       fromScreen(
         event.clientX,
@@ -7281,116 +7472,103 @@ canvas.addEventListener(
     const hit=
       nearestBall(p);
 
+    if(
+      state.tableLocked&&
+      hit
+    ){
+      return;
+    }
+
     if(hit){
-      event.preventDefault();
+      const ball=
+        hit.type==="cue"
+          ?null
+          :state.tableBalls.find(
+            b=>
+              b.number===
+              hit.number
+          );
+
+      if(
+        hit.type!=="cue"&&
+        !ball
+      ){
+        return;
+      }
 
       if(
         hit.type==="cue"
       ){
-
         state.selectedBall=
           "cue";
-
         state.selectedRackBall=
           null;
-
-        dragPointerId=
-          event.pointerId;
+      }else{
+        state.selectedBall=
+          "object";
+        state.selectedRackBall=
+          ball.number;
 
         if(
-          canvas.setPointerCapture
+          ball.owner==="target"
         ){
-          canvas.setPointerCapture(
-            event.pointerId
-          );
+          state.object={
+            x:ball.x,
+            y:ball.y,
+            number:ball.number
+          };
         }
-
-        render();
-
-        return;
       }
 
-      const ball=
-        state.tableBalls.find(
-          b=>
-            b.number===
-            hit.number
-        );
-
-      if(!ball){
-        return;
-      }
-
-      state.selectedBall=
-        "object";
-
-      state.selectedRackBall=
-        ball.number;
-
-      dragPointerId=
-        event.pointerId;
-
-      if(
-        canvas.setPointerCapture
-      ){
-        canvas.setPointerCapture(
-          event.pointerId
-        );
-      }
-
-      if(
-        ball.owner==="target"
-      ){
-
-        state.object={
-          x:ball.x,
-          y:ball.y,
-          number:ball.number
-        };
-      }
+      /*
+        Do not cancel the browser gesture at pointerdown. The
+        pointer is promoted to a drag only after a deliberate,
+        mostly-horizontal movement; a vertical swipe becomes page
+        scrolling instead of moving a ball.
+      */
+      pendingPointer={
+        kind:"ball",
+        pointerId:event.pointerId,
+        startX:event.clientX,
+        startY:event.clientY
+      };
 
       render();
-
       return;
     }
 
-    const pocket=nearestPocket(p);
+    const pocket=
+      nearestPocket(p);
+
     if(pocket){
-      event.preventDefault();
-      /*
-        Tapping the active mouth returns the solver to its
-        suggested-pocket search, so there is no second HTML
-        pocket control to hunt for on small screens.
-      */
-      state.selectedPocket=
-        state.selectedPocket&&
-        state.selectedPocket.id===pocket.id
-          ?null
-          :pocket;
-      solve();
+      pendingPointer={
+        kind:"pocket",
+        pointerId:event.pointerId,
+        startX:event.clientX,
+        startY:event.clientY,
+        pocket
+      };
       return;
     }
 
     if(
-      !state.selectedBall
+      !state.selectedBall||
+      state.tableLocked
     ){
       return;
     }
 
-    event.preventDefault();
-
-    dragPointerId=
-      event.pointerId;
-
-    if(
-      canvas.setPointerCapture
-    ){
-      canvas.setPointerCapture(
-        event.pointerId
-      );
-    }
-
-    moveSelectedBall(p);
+    /*
+      Preserve the original tap-a-ball-then-tap-table workflow,
+      while also allowing a deliberate horizontal drag after the
+      ball has been selected.
+    */
+    pendingPointer={
+      kind:"place",
+      pointerId:event.pointerId,
+      startX:event.clientX,
+      startY:event.clientY
+    };
   },
   {
     passive:false
@@ -7401,49 +7579,105 @@ canvas.addEventListener(
   "pointermove",
   event=>{
     if(
-      dragPointerId===
-      null||
-      event.pointerId!==
-      dragPointerId
+      dragPointerId!==null
     ){
+      if(
+        event.pointerId!==
+        dragPointerId
+      ){
+        return;
+      }
+
+      event.preventDefault();
+
+      moveSelectedBall(
+        fromScreen(
+          event.clientX,
+          event.clientY
+        )
+      );
+
       return;
     }
 
-    event.preventDefault();
-
-    moveSelectedBall(
-      fromScreen(
-        event.clientX,
-        event.clientY
-      )
-    );
+    beginPendingDrag(event);
   },
   {
     passive:false
   }
 );
 
-function endPointer(event){
+function finishPendingPointer(event){
   if(
-    event.pointerId!==
-    dragPointerId
+    !pendingPointer||
+    pendingPointer.pointerId!==
+    event.pointerId
   ){
     return;
   }
 
-  dragPointerId=null;
+  const pending=
+    pendingPointer;
+
+  pendingPointer=null;
 
   if(
-    canvas.releasePointerCapture
+    pending.kind===
+    "pocket"
   ){
-    try{
-      canvas.releasePointerCapture(
-        event.pointerId
-      );
-    }catch(error){
-      /* Pointer capture may already be released. */
-    }
+    /*
+      Tapping the active mouth returns the solver to its
+      suggested-pocket search, so there is no second HTML
+      pocket control to hunt for on small screens.
+    */
+    event.preventDefault();
+    state.selectedPocket=
+      state.selectedPocket&&
+      state.selectedPocket.id===
+      pending.pocket.id
+        ?null
+        :pending.pocket;
+    solve();
+    return;
   }
+
+  if(
+    pending.kind===
+    "place"
+  ){
+    event.preventDefault();
+    moveSelectedBall(
+      fromScreen(
+        event.clientX,
+        event.clientY
+      )
+    );
+  }
+}
+
+function endPointer(event){
+  if(
+    event.pointerId===
+    dragPointerId
+  ){
+    dragPointerId=null;
+
+    if(
+      canvas.releasePointerCapture
+    ){
+      try{
+        canvas.releasePointerCapture(
+          event.pointerId
+        );
+      }catch(error){
+        /* Pointer capture may already be released. */
+      }
+    }
+
+    return;
+  }
+
+  finishPendingPointer(event);
 }
 
 canvas.addEventListener(
@@ -7453,7 +7687,17 @@ canvas.addEventListener(
 
 canvas.addEventListener(
   "pointercancel",
-  endPointer
+  event=>{
+    if(
+      pendingPointer&&
+      pendingPointer.pointerId===
+      event.pointerId
+    ){
+      pendingPointer=null;
+    }
+
+    endPointer(event);
+  }
 );
 
 /* ============================================================
@@ -7496,6 +7740,10 @@ document.getElementById(
   state.solution=null;
 
   state.contactBall=null;
+
+  state.tableLocked=false;
+  pendingPointer=null;
+  dragPointerId=null;
 
   solve();
 };
